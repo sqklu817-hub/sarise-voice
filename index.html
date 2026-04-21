@@ -390,8 +390,6 @@ function buildReview(){
     }
   });
 
-  const closing = satisfactionHigh ? 'また機会があればぜひ利用したいと思います。' : '';
-
   let openSentence = '';
   if(triggerPart && purposePart){
     openSentence = triggerPart + purposePart;
@@ -402,14 +400,34 @@ function buildReview(){
     openSentence = purposePart;
   }
 
-  const coreParts = [openSentence, atmosphereSentence, menuSentence, goodPointSentence].filter(Boolean);
-  let text = coreParts.join('') + (freeSentence ? freeSentence : '') + closing;
+  // 重複チェックしながら文を結合するヘルパー
+  function appendIfNew(base, sentence){
+    if(!sentence) return base;
+    // すでに同じ文が含まれていればスキップ
+    const core = sentence.replace(/[。！!？?]$/, '').slice(0, 10);
+    if(base.includes(core)) return base;
+    return base + sentence;
+  }
+
+  let text = openSentence;
+  text = appendIfNew(text, atmosphereSentence);
+  text = appendIfNew(text, menuSentence);
+  text = appendIfNew(text, goodPointSentence);
+  text = appendIfNew(text, freeSentence);
+
+  // 文末の締め（重複しない場合のみ追加）
+  const closing = satisfactionHigh ? 'また機会があればぜひ利用したいと思います。' : '';
+  if(closing && !text.includes('また')) text += closing;
 
   if(!text.trim()) text = `${STORE}はとても満足できるお店でした。また機会があればぜひ利用したいと思います。`;
 
   // 200文字超 → 自由記述を省略
   if(text.length > 200 && freeSentence){
-    text = coreParts.join('') + closing;
+    text = openSentence;
+    text = appendIfNew(text, atmosphereSentence);
+    text = appendIfNew(text, menuSentence);
+    text = appendIfNew(text, goodPointSentence);
+    if(closing && !text.includes('また')) text += closing;
   }
 
   // まだ200超 → 良かった点を上位3つに絞る
@@ -424,13 +442,12 @@ function buildReview(){
     text = text.replace('また機会があればぜひ利用したいと思います。', 'また来たいです。');
   }
 
-  // 150未満 → 補足①
+  // 150未満 → 補足
   if(text.length < 150){
-    text = text.replace(/[。！!]$/, '') + '。雰囲気も良くとても居心地が良かったです。ぜひおすすめのお店です。';
-  }
-  // 150未満 → 補足②
-  if(text.length < 150){
-    text = text.replace(/[。！!]$/, '') + 'また機会があればぜひ利用したいと思います。';
+    const suffix = satisfactionHigh ? 'また来たいと思います。' : 'ありがとうございました。';
+    if(!text.includes('また来たい') && !text.includes('ありがとう')){
+      text = text.replace(/[。！!]$/, '') + '。' + suffix;
+    }
   }
 
   return text;
