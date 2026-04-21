@@ -412,13 +412,17 @@ function buildReview(){
 
   if(!text.trim()) text = `${STORE}はとても満足できるお店でした。`;
 
-  // closingを1回だけ追加
-  if(closing) text += closing;
+  const closingKeywords = ['また来たい','また利用','またお邪魔','また訪れ','また行きたい','リピート'];
+  const hasClosing = () => closingKeywords.some(k => text.includes(k));
+
+  // closingを1回だけ追加（重複チェック）
+  if(closing && !hasClosing()) text += closing;
 
   // 200文字超 → 自由記述を省略
   if(text.length > 200 && freeSentence){
     const trimmed = [openSentence, effectiveAtmosphere, menuSentence, effectiveGoodPoint].filter(Boolean);
-    text = trimmed.join('') + closing;
+    text = trimmed.join('');
+    if(closing && !hasClosing()) text += closing;
   }
 
   // まだ200超 → 良かった点を上位3つに絞る
@@ -435,10 +439,10 @@ function buildReview(){
 
   // 150未満 → closingを優先、それでも足りなければ補足文
   if(text.length < 150){
-    if(closing && !text.includes('また来たい')){
+    if(closing && !hasClosing()){
       text += closing;
     }
-    if(text.length < 150 && !text.includes('居心地も良く') && !text.includes('また来たい')){
+    if(text.length < 150 && !text.includes('居心地も良く') && !hasClosing()){
       text = text.replace(/[。！!]$/, '') + '。居心地も良く、とても満足できるお店でした。';
     }
   }
