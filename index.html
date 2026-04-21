@@ -350,7 +350,7 @@ function buildReview(){
     const title = q.title || '';
 
     if(i === 0){
-      satisfactionHigh = (typeof ans === 'number') ? ans >= 4 : false;
+      satisfactionHigh = (typeof ans === 'number') ? ans <= 1 : false;
       return;
     }
     if(ans === null || ans === undefined || ans === '') return;
@@ -401,9 +401,13 @@ function buildReview(){
     openSentence = purposePart;
   }
 
+  // デフォルト文（回答が空のパーツを補完）
+  const effectiveAtmosphere = atmosphereSentence || '居心地の良いお店でした。';
+  const effectiveGoodPoint  = goodPointSentence  || '全体的にとても満足できました。';
+
   // すべての文を順番に結合（closingは最後に1回だけ）
   const closing = satisfactionHigh ? 'また来たいと思います。' : '';
-  const bodyParts = [openSentence, atmosphereSentence, menuSentence, goodPointSentence, freeSentence].filter(Boolean);
+  const bodyParts = [openSentence, effectiveAtmosphere, menuSentence, effectiveGoodPoint, freeSentence].filter(Boolean);
   let text = bodyParts.join('');
 
   if(!text.trim()) text = `${STORE}はとても満足できるお店でした。`;
@@ -413,7 +417,7 @@ function buildReview(){
 
   // 200文字超 → 自由記述を省略
   if(text.length > 200 && freeSentence){
-    const trimmed = [openSentence, atmosphereSentence, menuSentence, goodPointSentence].filter(Boolean);
+    const trimmed = [openSentence, effectiveAtmosphere, menuSentence, effectiveGoodPoint].filter(Boolean);
     text = trimmed.join('') + closing;
   }
 
@@ -421,7 +425,7 @@ function buildReview(){
   if(text.length > 200 && goodPointAns.length > 3){
     const top3 = goodPointAns.slice(0, 3);
     const newGood = top3[0] + 'や' + top3[1] + '、' + top3[2] + 'も満足でした。';
-    text = text.replace(goodPointSentence, newGood);
+    text = text.replace(effectiveGoodPoint, newGood);
   }
 
   // まだ200超 → closingを除去
@@ -429,12 +433,14 @@ function buildReview(){
     text = text.replace(closing, '');
   }
 
-  // 150未満 → 補足文を追加（1回だけ）
-  if(text.length < 150 && !text.includes('居心地も良く')){
-    text = text.replace(/[。！!]$/, '') + '。居心地も良く、とても満足できるお店でした。';
-  }
-  if(text.length < 150 && closing && !text.includes('また来たい')){
-    text += closing;
+  // 150未満 → closingを優先、それでも足りなければ補足文
+  if(text.length < 150){
+    if(closing && !text.includes('また来たい')){
+      text += closing;
+    }
+    if(text.length < 150 && !text.includes('居心地も良く') && !text.includes('また来たい')){
+      text = text.replace(/[。！!]$/, '') + '。居心地も良く、とても満足できるお店でした。';
+    }
   }
 
   return text;
