@@ -1,0 +1,1312 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sarise Voice 管理画面</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root{--bg:#f6f8fb;--card:#fff;--line:#d8e0ec;--txt:#1f2937;--muted:#6b7280;--pri:#1d4ed8;--ok:#047857;--warn:#b45309}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif}
+    .wrap{max-width:1200px;margin:0 auto;padding:16px} .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+    h1{font-size:22px;margin:0 0 8px} h2{font-size:18px;margin:0 0 8px} h3{font-size:15px;margin:8px 0}
+    .muted{color:var(--muted);font-size:12px} .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .tabs button,.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer}
+    .tabs button.on{background:var(--pri);color:#fff;border-color:var(--pri)} .btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+    .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff} .btn.warn{background:var(--warn);border-color:var(--warn);color:#fff}
+    input,select,textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff}
+    textarea{min-height:80px} .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px} .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .hidden{display:none} table{width:100%;border-collapse:collapse;font-size:13px} th,td{border-bottom:1px solid #edf1f7;padding:8px;text-align:left;vertical-align:top;word-break:keep-all;white-space:normal}
+    .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;border:1px solid var(--line)} .pub{background:#ecfdf5;color:#065f46}.draft{background:#fffbeb;color:#92400e}
+    .qItem{border:1px solid #e9eef6;border-radius:10px;padding:10px;margin-bottom:8px;background:#fbfdff} .optItem{display:flex;gap:6px;align-items:center;margin:4px 0}
+    .preview{border:1px dashed #cfd8e3;border-radius:12px;padding:12px;background:#fff} .phone{max-width:390px;margin:0 auto}
+    .status{font-size:12px;color:#374151} .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.kpi .card{margin:0}
+    .chart{display:flex;align-items:flex-end;gap:6px;height:120px;padding:8px;border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
+    .bar{width:18px;background:#60a5fa;border-radius:6px 6px 0 0;max-height:100%}
+    .urlCell{max-width:300px;display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .toolbar .count{padding:4px 8px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:12px}
+    .statusGrid{display:grid;grid-template-columns:repeat(5,minmax(80px,1fr));gap:4px}
+    .statusItem{font-size:11px;padding:2px 6px;border:1px solid var(--line);border-radius:999px;background:#f9fafb;display:inline-block}
+    .statusItem.ok{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
+    .statusItem.warn{background:#fff7ed;color:#9a3412;border-color:#fed7aa}
+    .panel{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fcfdff}
+    .helpFlow button{min-width:170px}
+    .modalBack{position:fixed;inset:0;background:rgba(17,24,39,.45);display:none;align-items:center;justify-content:center;z-index:20}
+    .modal{max-width:560px;width:94%;background:#fff;border-radius:12px;border:1px solid var(--line);padding:14px}
+    .modal ul{margin:6px 0 0 18px;padding:0}
+    .err{font-size:12px;color:#b91c1c}
+    .okText{color:#166534}
+    .opsCell{display:flex;gap:6px;flex-wrap:wrap;min-width:240px}
+    .opsCell .btn{min-width:72px}
+    .storeName{min-width:120px;font-weight:600}
+    .statusGrid{grid-template-columns:repeat(3,minmax(90px,1fr))}
+
+    /* ダッシュボード */
+    .dash-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+    .dash-kpi .card{margin:0;text-align:center}
+    .dash-kpi .kpi-num{font-size:28px;font-weight:700;color:var(--pri)}
+    .dash-kpi .kpi-label{font-size:12px;color:var(--muted);margin-top:4px}
+
+    /* スコア表示 */
+    .score-circle{width:100px;height:100px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:28px;font-weight:700;border:4px solid var(--pri);color:var(--pri);margin:12px auto}
+    .score-grade{font-size:13px;font-weight:400}
+    .grade-A{border-color:#047857;color:#047857}
+    .grade-B{border-color:#1d4ed8;color:#1d4ed8}
+    .grade-C{border-color:#b45309;color:#b45309}
+    .grade-D{border-color:#b91c1c;color:#b91c1c}
+
+    /* 順位グラフ */
+    .rank-bar{background:#818cf8;border-radius:6px 6px 0 0;width:18px;max-height:100%}
+
+    /* レポートプレビュー */
+    .report-preview{border:2px solid var(--line);border-radius:12px;padding:20px;background:#fff;font-family:'Noto Sans JP',sans-serif;line-height:1.8}
+    .report-preview h3{border-bottom:2px solid var(--pri);padding-bottom:6px;color:var(--pri)}
+    .up{color:#047857;font-weight:700}
+    .down{color:#b91c1c;font-weight:700}
+    .same{color:var(--muted)}
+
+    /* 印刷用 */
+    @media print {
+      .tabs,nav,.toolbar,.helpFlow,button:not(.printKeep),
+      select:not(.printKeep),#roleSel,.modalBack{display:none !important}
+      section:not(.printTarget){display:none !important}
+      .printTarget{display:block !important}
+      .report-preview,.diagnosis-result{page-break-inside:avoid}
+      body{background:white !important}
+      /* 診断：入力フォームを隠して結果のみ印刷 */
+      #tab-diagnosis.printTarget > .card:not(.diagnosis-result){display:none !important}
+      #tab-diagnosis.printTarget .diagnosis-result{display:block !important}
+      /* 月次：入力フォームを隠してレポートのみ印刷 */
+      #tab-monthly.printTarget > .card{display:none !important}
+      #tab-monthly.printTarget #reportPreview{display:block !important}
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card row" style="justify-content:space-between">
+    <div>
+      <h1>Sarise Voice 管理画面</h1>
+      <div class="muted">一覧 → 編集 → プレビュー → QR生成 を1画面で運用</div>
+    </div>
+    <div class="row">
+      <label class="muted" style="width:auto">権限</label>
+      <select id="roleSel" style="width:130px"><option>管理者</option><option>編集者</option><option>閲覧者</option></select>
+    </div>
+  </div>
+
+  <div class="card tabs row">
+    <button data-tab="stores" class="on">店舗一覧</button>
+    <button data-tab="editor">店舗編集</button>
+    <button data-tab="templates">テンプレート</button>
+    <button data-tab="analytics">分析</button>
+    <button data-tab="dashboard">ダッシュボード</button>
+    <button data-tab="diagnosis">無料診断</button>
+    <button data-tab="ranking">順位トラッキング</button>
+    <button data-tab="monthly">月次レポート</button>
+  </div>
+
+  <section id="tab-stores">
+    <div class="card">
+      <div class="panel helpFlow">
+        <div><strong>最初に行う操作</strong></div>
+        <div class="muted">迷いやすい初回操作を3つに整理しました。</div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn pri" id="quickCreateStoreBtn">① 新規店舗を作成</button>
+          <select id="newFromTemplate" style="width:220px"></select>
+          <button class="btn" id="createStoreBtn">② テンプレから作成</button>
+          <button class="btn" id="quickDuplicateBtn">③ 既存店舗を複製</button>
+        </div>
+      </div>
+      <div class="row" style="justify-content:space-between;margin-top:10px">
+        <input id="storeSearch" placeholder="店舗名で検索" style="max-width:260px" />
+        <div class="row">
+          <button class="btn" id="copyAllUrlsBtn">全店舗URLを一括コピー</button>
+        </div>
+      </div>
+    </div>
+    <div class="card toolbar">
+      <span class="count" id="selectedCount">選択中: 0件</span>
+      <button class="btn" id="bulkPublishBtn">一括公開</button>
+      <button class="btn" id="bulkDraftBtn">一括下書き</button>
+      <button class="btn" id="bulkQrBtn">一括QR生成</button>
+      <button class="btn" id="bulkPopBtn">一括POP出力</button>
+      <button class="btn" id="bulkCopyUrlBtn">一括URLコピー</button>
+      <select id="bulkTemplateSel" style="width:220px"></select>
+      <button class="btn" id="bulkApplyTemplateBtn">一括テンプレ差し替え</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th><input type="checkbox" id="selectAllStores" /></th><th>店舗名</th><th>運用状態</th><th>最終更新日</th><th>作成者</th><th>配布URL</th><th>操作</th></tr></thead>
+        <tbody id="storeTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tab-editor" class="hidden">
+    <div class="grid2">
+      <div>
+        <div class="card">
+          <h2>店舗設定</h2>
+          <div class="grid2">
+            <div><label class="muted">店舗名</label><input id="eName" /></div>
+            <div><label class="muted">作成者</label><select id="eAuthor"></select></div>
+            <div><label class="muted">ステータス</label><select id="eStatus"><option value="公開中">公開中</option><option value="下書き">下書き</option></select></div>
+            <div><label class="muted">口コミURL <span style="font-weight:400;color:#6b7280">（GoogleマップのレビューページURL）</span></label><input id="eReviewUrl" placeholder="https://search.google.com/local/writereview?placeid=..." /></div>
+            <div><label class="muted">アプリ名</label><input id="eAppName" value="Sarise Voice" /></div>
+            <div><label class="muted">サブタイトル</label><input id="eSubTitle" value="1分アンケートで口コミ文を自動作成します" /></div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn" id="saveDraftBtn">下書き保存</button>
+            <button class="btn ok" id="publishBtn">公開保存</button>
+            <button class="btn" id="restoreBtn">直前状態を復元</button>
+            <span class="status" id="saveState">未保存</span>
+          </div>
+          <div class="panel" style="margin-top:10px">
+            <strong>公開前チェック</strong>
+            <ul id="publishChecklist" class="muted" style="margin:6px 0 0 18px"></ul>
+            <div class="err" id="validationMsg"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px"><h2 style="margin:0">質問編集</h2><div class="row" style="gap:8px;flex-wrap:wrap"><select id="questionTemplateSelect" class="input" style="min-width:160px"><option value="">テンプレートを選択</option><option value="restaurant">飲食店向け</option><option value="salon">美容室向け</option><option value="clinic">整骨院向け</option></select><button class="btn btn-secondary" id="applyQuestionTemplateBtn">質問に適用する</button><button class="btn" id="addQuestionBtn">質問を追加</button></div></div>
+          <div id="questionList"></div>
+        </div>
+
+        <div class="card">
+          <h2>配布URLとQR</h2>
+          <div class="muted">配布先アプリURL: <input id="eBaseUrl" value="https://sarisevoicetools.netlify.app/" /><button class="btn" id="resetBaseUrlBtn" style="width:auto;margin-top:4px">デフォルトに戻す</button></div>
+          <div class="err" id="baseUrlErr" style="display:none"></div>
+          <textarea id="eDistUrl" readonly></textarea>
+          <div class="row" style="margin-top:8px">
+            <button class="btn pri" id="applyBtn">変更内容をURLに反映</button>
+            <button class="btn" id="copyUrlBtn">URLをコピー</button>
+            <a class="btn" id="openUrlBtn" target="_blank" rel="noopener">URLを開く</a>
+            <button class="btn" id="genQrBtn">QR生成</button>
+            <a class="btn" id="dlQrBtn" download="sarise-qr.png">PNGダウンロード</a>
+            <button class="btn" id="popBtn">簡易POP表示</button>
+          </div>
+          <div id="qrArea" style="margin-top:10px"></div>
+        </div>
+        <div class="card">
+          <h2>編集履歴</h2>
+          <div class="muted">誰が、いつ、何を更新したかを確認できます（最新20件）。</div>
+          <div id="historyList" style="margin-top:8px"></div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="row" style="justify-content:space-between"><h2 style="margin:0">リアルタイムプレビュー</h2><div class="row"><button class="btn" id="pcViewBtn">PC</button><button class="btn" id="spViewBtn">スマホ</button></div></div>
+          <div id="previewBox" class="preview"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-templates" class="hidden">
+    <div class="card"><h2>テンプレート一覧</h2><table><thead><tr><th>テンプレート名</th><th>カテゴリ</th><th>最終更新日</th><th>操作</th></tr></thead><tbody id="tplTable"></tbody></table></div>
+  </section>
+
+  <section id="tab-analytics" class="hidden">
+    <div class="card">
+      <h2>分析ダッシュボード（ダミー）</h2>
+      <div class="row">
+        <select id="analyticsStore" style="max-width:280px"></select>
+        <select id="analyticsRange" style="max-width:160px">
+          <option value="7">7日</option>
+          <option value="30" selected>30日</option>
+          <option value="custom">任意期間</option>
+        </select>
+        <input id="analyticsFrom" type="date" style="max-width:180px" />
+        <input id="analyticsTo" type="date" style="max-width:180px" />
+        <button class="btn" id="downloadCsvBtn">CSV出力</button>
+      </div>
+      <div class="muted" id="trendText" style="margin-top:6px"></div>
+    </div>
+    <div class="kpi" id="kpi"></div>
+    <div class="card"><h3>回答推移</h3><div class="chart" id="chartMain"></div></div>
+    <div class="card"><h3>流入内訳（QR / URL）</h3><div class="chart" id="chartSource"></div></div>
+  </section>
+
+  <!-- ===== 新機能: ダッシュボード ===== -->
+  <section id="tab-dashboard" class="hidden">
+    <div class="dash-kpi" id="dashKpi"></div>
+    <div class="card" style="margin-top:12px">
+      <h2>店舗ステータス一覧</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>店舗名</th><th>状態</th><th>最終更新</th>
+            <th>回答数(30日)</th><th>口コミ返信数</th>
+            <th>最新順位</th><th>診断スコア</th>
+          </tr>
+        </thead>
+        <tbody id="dashStoreTable"></tbody>
+      </table>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h2>今月のアクションリスト</h2>
+      <div id="dashActions"></div>
+    </div>
+  </section>
+
+  <!-- ===== 新機能: 無料診断 ===== -->
+  <section id="tab-diagnosis" class="hidden">
+    <div class="card">
+      <h2>MEO無料診断レポート</h2>
+      <div class="muted">店舗情報を入力してMEO状態を診断します。診断後にPDF出力できます。</div>
+      <div class="grid2" style="margin-top:12px">
+        <div><label class="muted">店舗選択</label><select id="diagStoreSelect" onchange="onDiagStoreChange(this)"></select></div>
+        <div><label class="muted">店舗名</label><input id="diagStoreName" placeholder="例：渋谷〇〇店" /></div>
+        <div><label class="muted">業種</label>
+          <select id="diagIndustry">
+            <option>飲食</option><option>美容</option><option>不動産</option><option>クリニック</option><option>その他</option>
+          </select>
+        </div>
+        <div><label class="muted">Googleマップ掲載</label>
+          <select id="diagHasGbp"><option>あり</option><option>なし</option></select>
+        </div>
+        <div><label class="muted">口コミ件数</label><input id="diagReviewCount" type="number" min="0" placeholder="例：25" /></div>
+        <div><label class="muted">平均評価</label><input id="diagAvgRating" type="number" step="0.1" min="1" max="5" placeholder="例：4.2" /></div>
+        <div><label class="muted">写真枚数</label><input id="diagPhotoCount" type="number" min="0" placeholder="例：15" /></div>
+        <div><label class="muted">最終投稿日</label>
+          <select id="diagLastPost">
+            <option>1週間以内</option><option>1ヶ月以内</option><option>3ヶ月以上前</option><option>投稿なし</option>
+          </select>
+        </div>
+        <div><label class="muted">口コミへの返信</label>
+          <select id="diagReplyStatus">
+            <option>全件返信</option><option>一部返信</option><option>返信なし</option>
+          </select>
+        </div>
+        <div><label class="muted">競合店舗の平均口コミ数</label><input id="diagCompetitorAvg" type="number" min="0" placeholder="例：40" /></div>
+        <div><label class="muted">現在の検索順位（目標キーワード）</label><input id="diagCurrentRank" type="number" min="1" max="100" placeholder="例：8" /></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn pri" onclick="runDiagnosis()">診断する</button>
+      </div>
+    </div>
+    <div class="card diagnosis-result" id="diagResult" style="display:none">
+      <!-- 診断結果がここに挿入される -->
+    </div>
+    <div class="card" id="diagPrintPanel" style="display:none">
+      <button class="btn pri" onclick="printDiagnosis()">診断レポートを印刷・保存</button>
+    </div>
+  </section>
+
+  <!-- ===== 新機能: 順位トラッキング ===== -->
+  <section id="tab-ranking" class="hidden">
+    <div class="card">
+      <h2>キーワード登録</h2>
+      <div class="row">
+        <select id="rankingStoreSelect" style="max-width:260px"></select>
+        <input id="rankingKeyword" placeholder="例：渋谷 居酒屋" style="max-width:240px" />
+        <button class="btn pri" onclick="addRankingKeyword()">追加</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>順位入力</h2>
+      <div id="rankingInputList"></div>
+    </div>
+    <div class="card">
+      <h2>順位推移グラフ</h2>
+      <div id="rankingChart"><div class="muted">キーワードの「グラフ表示」を押してください</div></div>
+    </div>
+    <div class="card">
+      <h2>順位一覧</h2>
+      <table>
+        <thead>
+          <tr><th>店舗名</th><th>キーワード</th><th>初回順位</th><th>最新順位</th><th>変化</th><th>記録数</th><th>操作</th></tr>
+        </thead>
+        <tbody id="rankingTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== 新機能: 月次レポート ===== -->
+  <section id="tab-monthly" class="hidden">
+    <div class="card">
+      <h2>月次レポート生成</h2>
+      <div class="grid2">
+        <div><label class="muted">店舗</label><select id="reportStoreSelect"></select></div>
+        <div><label class="muted">対象年月</label><input id="reportYearMonth" type="month" /></div>
+        <div><label class="muted">今月の口コミ件数（新規）</label><input id="reportReviewsNew" type="number" min="0" /></div>
+        <div><label class="muted">先月の口コミ件数（比較用）</label><input id="reportReviewsPrev" type="number" min="0" /></div>
+        <div><label class="muted">今月の平均評価</label><input id="reportRatingNew" type="number" step="0.1" min="1" max="5" /></div>
+        <div><label class="muted">先月の平均評価（比較用）</label><input id="reportRatingPrev" type="number" step="0.1" min="1" max="5" /></div>
+        <div><label class="muted">今月のGBP閲覧数</label><input id="reportGbpViewNew" type="number" min="0" /></div>
+        <div><label class="muted">先月のGBP閲覧数（比較用）</label><input id="reportGbpViewPrev" type="number" min="0" /></div>
+        <div><label class="muted">口コミ返信数（今月）</label><input id="reportReplyCount" type="number" min="0" /></div>
+        <div><label class="muted">GBP投稿数（今月）</label><input id="reportPostCount" type="number" min="0" /></div>
+      </div>
+      <div style="margin-top:8px"><label class="muted">主要キーワードの順位変動</label><textarea id="reportRankChanges" placeholder="例：渋谷 居酒屋 8位→5位（+3）"></textarea></div>
+      <div style="margin-top:8px"><label class="muted">来月の改善施策</label><textarea id="reportNextActions" placeholder="例：GBP投稿を週2回に増やす"></textarea></div>
+      <div style="margin-top:8px"><label class="muted">特記事項</label><textarea id="reportNotes" placeholder="例：キャンペーン期間中につき口コミ増加"></textarea></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn pri" onclick="generateMonthlyReport()">レポートを生成する</button>
+      </div>
+    </div>
+    <div id="reportPreview" style="display:none;margin-bottom:12px"></div>
+    <div class="card" style="display:none" id="printReportPanel">
+      <button class="btn pri" onclick="printReport()">印刷・PDF保存</button>
+    </div>
+  </section>
+</div>
+
+<div id="confirmModalBack" class="modalBack">
+  <div class="modal">
+    <h3 id="confirmTitle">確認</h3>
+    <div id="confirmBody" class="muted"></div>
+    <div class="row" style="justify-content:flex-end;margin-top:10px">
+      <button class="btn" id="confirmCancelBtn">キャンセル</button>
+      <button class="btn warn" id="confirmOkBtn">実行する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const LS = { stores:'sv_stores_v2', templates:'sv_templates_v2', draft:'sv_editor_draft_v2', undo:'sv_editor_undo_v2', history:'sv_edit_history_v2', baseUrl:'sv_base_url_v1' };
+const now = () => new Date().toISOString().slice(0,16).replace('T',' ');
+const uid = () => Math.random().toString(36).slice(2,8);
+const enc = obj => btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+const dec = str => JSON.parse(decodeURIComponent(escape(atob(str))));
+const $ = s => document.querySelector(s);
+const DEFAULT_BASE_URL = 'https://sqklu817-hub.github.io/sarise-voice/';
+const AUTHORS = ['未選択','管理者','店長','副店長','スタッフA','スタッフB'];
+
+const defaultTemplates = [
+  {id:uid(),name:'居酒屋向け',category:'居酒屋',updatedAt:now(),config:templateConfig('居酒屋向け')},
+  {id:uid(),name:'カフェ向け',category:'カフェ',updatedAt:now(),config:templateConfig('カフェ向け')},
+  {id:uid(),name:'焼肉店向け',category:'焼肉',updatedAt:now(),config:templateConfig('焼肉店向け')},
+  {id:uid(),name:'ラーメン店向け',category:'ラーメン',updatedAt:now(),config:templateConfig('ラーメン店向け')}
+];
+function templateConfig(name){
+  return {
+    appName:'Sarise Voice',subTitle:'1分アンケートで口コミ文を自動作成します',
+    questions:[
+      {id:uid(),title:'全体的なご満足度を教えてください',type:'single',options:['最高でした！','良かったです','普通でした','もう少しでした','がっかりでした']},
+      {id:uid(),title:'今回のご来店のきっかけを教えてください',type:'single',options:['Google検索','紹介','SNS','通りがかり']},
+      {id:uid(),title:'来店目的を教えてください',type:'single',options:['ランチ','ディナー','記念日']},
+      {id:uid(),title:`${name}として特に良かった点は？`,type:'multi',options:['味','接客','雰囲気','価格']},
+      {id:uid(),title:'ひとこと感想',type:'text',options:[]}
+    ]
+  };
+}
+
+let stores = JSON.parse(localStorage.getItem(LS.stores)||'[]');
+let templates = JSON.parse(localStorage.getItem(LS.templates)||'null') || defaultTemplates;
+localStorage.setItem(LS.templates, JSON.stringify(templates));
+stores = stores.map(s=>({
+  ...s,
+  templateId:s.templateId||'',
+  qrReady:!!s.qrReady,
+  popReady:!!s.popReady,
+  lastResponseAt:s.lastResponseAt||'未',
+  metrics:s.metrics||mockMetrics()
+}));
+let currentStoreId = null;
+let previewMode = 'pc';
+let autoSaveTimer;
+let selectedStoreIds = new Set();
+let confirmAction = null;
+let editHistory = JSON.parse(localStorage.getItem(LS.history)||'[]');
+
+function saveStores(){ localStorage.setItem(LS.stores, JSON.stringify(stores)); renderStores(); renderAnalytics(); renderDiagnosisStores(); }
+function saveTemplates(){ localStorage.setItem(LS.templates, JSON.stringify(templates)); renderTemplates(); }
+function saveHistory(){ localStorage.setItem(LS.history, JSON.stringify(editHistory.slice(0,20))); }
+function initBaseUrl(){
+  const saved = localStorage.getItem(LS.baseUrl);
+  $('#eBaseUrl').value = (saved && saved.trim()) ? saved.trim() : DEFAULT_BASE_URL;
+}
+function getBaseUrl(){
+  const v = ($('#eBaseUrl').value || '').trim();
+  return v || DEFAULT_BASE_URL;
+}
+function saveBaseUrl(){
+  localStorage.setItem(LS.baseUrl, getBaseUrl());
+}
+function renderAuthorOptions(){
+  $('#eAuthor').innerHTML = AUTHORS.map(v=>`<option value="${v==='未選択'?'':v}">${v}</option>`).join('');
+}
+
+function activeRole(){ return $('#roleSel').value; }
+function canDelete(){ return activeRole()==='管理者'; }
+function canPublish(){ return activeRole()==='管理者'; }
+function canEdit(){ return activeRole()!=='閲覧者'; }
+function canBulkPublish(){ return activeRole()==='管理者'; }
+
+function pushHistory(action, detail){
+  const s = currentStore();
+  editHistory.unshift({at:now(), role:activeRole(), storeId:s?.id||'', storeName:s?.name||'未選択', action, detail});
+  editHistory = editHistory.slice(0,20);
+  saveHistory();
+  renderHistory();
+}
+
+function openConfirm(title, lines, onOk){
+  $('#confirmTitle').textContent = title;
+  $('#confirmBody').innerHTML = `<ul>${lines.map(v=>`<li>${v}</li>`).join('')}</ul>`;
+  confirmAction = onOk;
+  $('#confirmModalBack').style.display='flex';
+}
+function closeConfirm(){ $('#confirmModalBack').style.display='none'; confirmAction = null; }
+
+document.querySelectorAll('.tabs button').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');['stores','editor','templates','analytics','dashboard','diagnosis','ranking','monthly'].forEach(t=>document.getElementById('tab-'+t).classList.add('hidden'));document.getElementById('tab-'+btn.dataset.tab).classList.remove('hidden');});
+
+function renderStores(){
+  const q = $('#storeSearch').value?.trim() || '';
+  const rows = stores.filter(s=>s.name.includes(q));
+  $('#storeTable').innerHTML = rows.map(s=>`<tr>
+    <td><input type="checkbox" ${selectedStoreIds.has(s.id)?'checked':''} onchange="toggleStoreSelection('${s.id}',this.checked)" /></td>
+    <td class="storeName">${s.name}</td>
+    <td>
+      <div class="statusGrid">
+        <span class="statusItem ${s.status==='公開中'?'ok':'warn'}">${s.status}</span>
+        <span class="statusItem ${s.qrReady?'ok':'warn'}">QR:${s.qrReady?'済':'未'}</span>
+        <span class="statusItem ${s.popReady?'ok':'warn'}">POP:${s.popReady?'済':'未'}</span>
+        <span class="statusItem ${s.templateId?'ok':'warn'}">テンプレ:${s.templateId?'適用中':'未'}</span>
+        <span class="statusItem">最終回答:${s.lastResponseAt||'未'}</span>
+      </div>
+    </td>
+    <td>${s.updatedAt}</td><td>${s.author||'-'}</td>
+    <td><span class="urlCell" title="${s.url||''}">${s.url||'-'}</span></td>
+    <td class="opsCell">
+      <button class="btn" ${canEdit()?'':'disabled'} onclick="goEdit('${s.id}')">編集</button>
+      <button class="btn" onclick="copyStoreUrl('${s.id}')">配布URLコピー</button>
+      <button class="btn" ${canEdit()?'':'disabled'} onclick="duplicateStore('${s.id}')">複製</button>
+      <button class="btn" onclick="previewFromList('${s.id}')">プレビュー</button>
+      <button class="btn" onclick="qrFromList('${s.id}')">QR</button>
+      <button class="btn" ${canDelete()?'':'disabled'} onclick="deleteStore('${s.id}')">削除</button>
+    </td>
+  </tr>`).join('') || '<tr><td colspan="7" class="muted">店舗がありません</td></tr>';
+
+  $('#newFromTemplate').innerHTML = templates.map(t=>`<option value="${t.id}">${t.name} / ${t.category}</option>`).join('');
+  $('#bulkTemplateSel').innerHTML = templates.map(t=>`<option value="${t.id}">${t.name} / ${t.category}</option>`).join('');
+  $('#analyticsStore').innerHTML = stores.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  $('#selectedCount').textContent = `選択中: ${selectedStoreIds.size}件`;
+  $('#selectAllStores').checked = rows.length>0 && rows.every(v=>selectedStoreIds.has(v.id));
+}
+
+function resolveTemplateId(store){
+  const name = (store.config?.appName || store.name || '').toLowerCase();
+  const cat  = (store.category || '').toLowerCase();
+  if(name.includes('美容') || name.includes('beauty') || name.includes('サロン') || cat.includes('美容')) return 'beauty';
+  if(name.includes('整骨') || name.includes('接骨') || name.includes('seikotsuin') || cat.includes('整骨')) return 'seikotsuin';
+  return 'food';
+}
+
+function buildDistributionUrl(store){
+  const base = getBaseUrl();
+  const sep = base.includes('?') ? '&' : '?';
+  const template = resolveTemplateId(store);
+  const qp = new URLSearchParams({store:store.name||'', url:store.reviewUrl||'', template});
+  return `${base}${sep}${qp.toString()}`;
+}
+
+function createStoreFromTemplate(){
+  if(!canEdit()) return alert('閲覧者は新規作成できません');
+  const t = templates.find(v=>v.id===$('#newFromTemplate').value);
+  const s = {id:uid(),name:`新規店舗-${stores.length+1}`,status:'下書き',updatedAt:now(),author:'',reviewUrl:'',config:JSON.parse(JSON.stringify(t.config)),url:'',metrics:mockMetrics(),templateId:t.id,qrReady:false,popReady:false,lastResponseAt:'未'};
+  stores.unshift(s); saveStores(); openEditor(s.id);
+  pushHistory('新規作成', `テンプレ「${t.name}」から店舗作成`);
+}
+
+function duplicateStore(id){ if(!canEdit()) return; const s = stores.find(v=>v.id===id); const c = JSON.parse(JSON.stringify(s)); c.id=uid(); c.name += '（複製）'; c.status='下書き'; c.updatedAt=now(); c.url=''; stores.unshift(c); saveStores(); pushHistory('複製', `${s.name} を複製`); }
+function deleteStore(id){ if(!canDelete()) return alert('管理者のみ削除できます'); stores = stores.filter(v=>v.id!==id); saveStores(); }
+function previewFromList(id){ openEditor(id); document.querySelector('[data-tab="editor"]').click(); }
+function qrFromList(id){ openEditor(id); genQr(); }
+function goEdit(id){ openEditor(id); document.querySelector('[data-tab=\"editor\"]').click(); }
+async function copyStoreUrl(id){ const s = stores.find(v=>v.id===id); if(!s?.url) return alert('配布URLがありません'); await navigator.clipboard.writeText(s.url); alert('配布URLをコピーしました'); }
+
+function toggleStoreSelection(id, checked){
+  if(checked) selectedStoreIds.add(id); else selectedStoreIds.delete(id);
+  $('#selectedCount').textContent = `選択中: ${selectedStoreIds.size}件`;
+}
+function selectedStores(){ return stores.filter(s=>selectedStoreIds.has(s.id)); }
+
+function openEditor(id){
+  currentStoreId = id;
+  const s = stores.find(v=>v.id===id); if(!s) return;
+  if(s.author && !AUTHORS.includes(s.author) && !Array.from($('#eAuthor').options).find(o=>o.value===s.author)){
+    $('#eAuthor').insertAdjacentHTML('beforeend', `<option value="${s.author}">${s.author}</option>`);
+  }
+  $('#eName').value=s.name; $('#eAuthor').value=s.author||''; $('#eStatus').value=s.status; $('#eReviewUrl').value=s.reviewUrl||'';
+  $('#eAppName').value=s.config.appName; $('#eSubTitle').value=s.config.subTitle;
+  renderQuestionEditor(s.config.questions);
+  $('#eDistUrl').value = s.url || '';
+  if(s.url) $('#openUrlBtn').href = s.url; else $('#openUrlBtn').removeAttribute('href');
+  renderPreview();
+  renderChecklist(validateStoreDraft(s), s);
+  renderHistory();
+  updateRoleUi();
+}
+
+function renderQuestionEditor(questions){
+  $('#questionList').innerHTML = questions.map((q,idx)=>`<div class="qItem" data-qid="${q.id}">
+    <div class="row" style="justify-content:space-between"><strong>Q${idx+1}</strong><div class="row"><button class="btn" onclick="moveQ('${q.id}',-1)">↑</button><button class="btn" onclick="moveQ('${q.id}',1)">↓</button><button class="btn" onclick="removeQ('${q.id}')">削除</button></div></div>
+    <label class="muted">質問文</label><input value="${q.title}" onchange="updateQ('${q.id}','title',this.value)" ${canEdit()?'':'disabled'} />
+    <label class="muted">タイプ</label><select onchange="updateQ('${q.id}','type',this.value)" ${canEdit()?'':'disabled'}>
+      <option ${q.type==='single'?'selected':''} value="single">単一選択</option>
+      <option ${q.type==='multi'?'selected':''} value="multi">複数選択</option>
+      <option ${q.type==='text'?'selected':''} value="text">自由記述</option>
+    </select>
+    <div ${q.type==='text'?'style="display:none"':''}>
+      <label class="muted">選択肢</label>
+      ${(q.options||[]).map((o,i)=>`<div class="optItem"><input value="${o}" onchange="updateOpt('${q.id}',${i},this.value)" ${canEdit()?'':'disabled'} /><button class="btn" onclick="delOpt('${q.id}',${i})">削除</button></div>`).join('')}
+      <button class="btn" onclick="addOpt('${q.id}')">選択肢を追加</button>
+    </div>
+  </div>`).join('');
+}
+
+function currentStore(){ return stores.find(v=>v.id===currentStoreId); }
+function mutateStore(fn, opt={log:true,action:'更新',detail:'店舗情報を更新',invalidateUrl:true}){
+  const s=currentStore(); if(!s) return;
+  localStorage.setItem(LS.undo, JSON.stringify(s));
+  fn(s);
+  s.updatedAt=now();
+  if(opt.invalidateUrl!==false){
+    s.url = buildDistributionUrl(s);
+    s.qrReady=false;
+    $('#eDistUrl').value = s.url;
+    if(s.url) $('#openUrlBtn').href = s.url; else $('#openUrlBtn').removeAttribute('href');
+  }
+  saveStores();
+  scheduleAutoSave();
+  renderPreview();
+  openEditor(s.id);
+  if(opt.log!==false) pushHistory(opt.action, opt.detail);
+}
+
+function validateStoreDraft(storeLike){
+  const errs = [];
+  if(!storeLike.name?.trim()) errs.push('店舗名は必須です。');
+  if(!storeLike.author?.trim()) errs.push('作成者は必須です。');
+  const same = stores.filter(v=>v.id!==storeLike.id && v.name===storeLike.name?.trim());
+  if(same.length) errs.push(`同じ店舗名「${storeLike.name}」が既に存在します。`);
+  if(!storeLike.reviewUrl?.trim()) errs.push('口コミURLは必須です。');
+  if(storeLike.reviewUrl && !/^https?:\/\/.+/.test(storeLike.reviewUrl)) errs.push('口コミURLは http(s):// から始まる形式で入力してください。');
+  const q = storeLike.config?.questions || [];
+  if(!q.length) errs.push('質問が1件もありません。');
+  if(q.some(v=>!v.title?.trim())) errs.push('質問文が未入力の項目があります。');
+  if(q.some(v=>v.type!=='text' && (!v.options || v.options.filter(o=>o.trim()).length<2))) errs.push('選択式の質問は2件以上の選択肢が必要です。');
+  return errs;
+}
+
+function getEditorDraft(){
+  const s = currentStore(); if(!s) return null;
+  const d = JSON.parse(JSON.stringify(s));
+  d.name = $('#eName')?.value?.trim() || '';
+  d.author = $('#eAuthor')?.value?.trim() || '';
+  d.reviewUrl = $('#eReviewUrl')?.value?.trim() || '';
+  d.config.appName = $('#eAppName')?.value?.trim() || d.config.appName;
+  d.config.subTitle = $('#eSubTitle')?.value?.trim() || d.config.subTitle;
+  d.config.questions = currentStore()?.config?.questions || d.config.questions;
+  return d;
+}
+
+function renderChecklist(errs=[], targetStore=null){
+  const s = targetStore || getEditorDraft() || currentStore();
+  if(!s) return;
+  const checks = [
+    ['店舗名', !!s?.name?.trim()],
+    ['作成者', !!s?.author?.trim()],
+    ['口コミURL入力済み', !!s?.reviewUrl?.trim()],
+    ['口コミURL形式', !!s?.reviewUrl?.trim() && /^https?:\/\/.+/.test(s.reviewUrl)],
+    ['質問の最小件数', (s?.config?.questions||[]).length>0],
+    ['重複店舗名なし', !stores.some(v=>v.id!==s?.id && v.name===s?.name)]
+  ];
+  $('#publishChecklist').innerHTML = checks.map(([name,ok])=>`<li class="${ok?'okText':'err'}">${ok?'✓':'✕'} ${name}</li>`).join('');
+  const realErrs = errs.length ? errs : validateStoreDraft(s);
+  $('#validationMsg').textContent = realErrs.length ? `公開できません: ${realErrs.join(' / ')}` : '公開可能です。';
+}
+
+function renderHistory(){
+  $('#historyList').innerHTML = editHistory.map((h,i)=>`<div class="panel" style="margin-bottom:6px">
+    <div><strong>${i+1}. ${h.action}</strong> <span class="muted">${h.at}</span></div>
+    <div class="muted">${h.storeName} / ${h.role}</div>
+    <div>${h.detail}</div>
+    <button class="btn" onclick="restoreFromHistory(${i})">この時点に戻す</button>
+  </div>`).join('') || '<div class="muted">履歴はまだありません。</div>';
+}
+function restoreFromHistory(i){
+  const h = editHistory[i]; if(!h?.storeId) return;
+  const target = stores.find(v=>v.id===h.storeId); if(!target) return alert('復元対象の店舗が見つかりません');
+  openEditor(target.id);
+  restoreUndo();
+}
+
+function updateQ(id,key,val){ if(!canEdit()) return; mutateStore(s=>{ const q=s.config.questions.find(v=>v.id===id); q[key]=val; }); }
+function updateOpt(id,i,val){ if(!canEdit()) return; mutateStore(s=>{ const q=s.config.questions.find(v=>v.id===id); q.options[i]=val; }); }
+function addOpt(id){ if(!canEdit()) return; mutateStore(s=>{ const q=s.config.questions.find(v=>v.id===id); q.options=q.options||[]; q.options.push('新しい選択肢'); }); }
+function delOpt(id,i){ if(!canEdit()) return; mutateStore(s=>{ const q=s.config.questions.find(v=>v.id===id); q.options.splice(i,1); }); }
+function removeQ(id){ if(!canEdit()) return; mutateStore(s=>{ s.config.questions=s.config.questions.filter(v=>v.id!==id); }); }
+function moveQ(id,dir){ if(!canEdit()) return; mutateStore(s=>{ const i=s.config.questions.findIndex(v=>v.id===id); const j=i+dir; if(j<0||j>=s.config.questions.length) return; [s.config.questions[i],s.config.questions[j]]=[s.config.questions[j],s.config.questions[i]]; }); }
+
+function addQuestion(){ if(!canEdit()) return; mutateStore(s=>{ s.config.questions.push({id:uid(),title:'新しい質問',type:'single',options:['選択肢1','選択肢2']}); }); }
+
+const QUESTION_TEMPLATES = {
+  restaurant: [
+    {title:'全体的なご満足度を教えてください',type:'single',options:['最高でした！','良かったです','普通でした','もう少しでした','がっかりでした']},
+    {title:'今回のご来店のきっかけを教えてください',type:'single',options:['Instagram','TikTok','食べログ','ホットペッパー','ぐるなび','Google検索','知人の紹介','もともと知っていた','通りがかり']},
+    {title:'今日の来店目的を教えてください',type:'single',options:['ランチ','ディナー','誕生日','記念日・お祝い','デート','接待・会食','友人との食事','家族での食事','一人ご飯']},
+    {title:'お店の雰囲気はどうでしたか',type:'single',options:['とても良かった','落ち着けた','賑やかで楽しかった','普通だった']},
+    {title:'特に良かった点を教えてください',type:'multi',options:['料理の美味しさ','接客の良さ','雰囲気','価格の満足度','清潔感']},
+    {title:'特に良かったメニュー・料理を教えてください',type:'text',options:[]},
+    {title:'ひとことご感想をお聞かせください',type:'text',options:[]}
+  ],
+  salon: [
+    {title:'全体的なご満足度を教えてください',type:'single',options:['最高でした！','良かったです','普通でした','もう少しでした','がっかりでした']},
+    {title:'今回のご来店のきっかけを教えてください',type:'single',options:['Instagram','TikTok','ホットペッパービューティー','Google検索','知人の紹介','以前から通っている']},
+    {title:'本日のメニューを教えてください',type:'single',options:['カット','カラー','パーマ','トリートメント','その他']},
+    {title:'お店の雰囲気はどうでしたか',type:'single',options:['とてもおしゃれだった','落ち着けた','清潔感があった','普通だった']},
+    {title:'特に良かった点を教えてください',type:'multi',options:['仕上がりの満足度','スタッフの対応','居心地の良さ','価格の満足度','清潔感']},
+    {title:'ひとことご感想をお聞かせください',type:'text',options:[]}
+  ],
+  clinic: [
+    {title:'全体的なご満足度を教えてください',type:'single',options:['最高でした！','良かったです','普通でした','もう少しでした','がっかりでした']},
+    {title:'今回のご来院のきっかけを教えてください',type:'single',options:['Google検索','TikTok','知人の紹介','チラシ','以前から通っている','通りがかり']},
+    {title:'本日の施術内容を教えてください',type:'single',options:['肩こり','腰痛','膝の痛み','骨盤矯正','スポーツによる怪我','その他']},
+    {title:'お店の雰囲気はどうでしたか',type:'single',options:['清潔感があった','落ち着けた','スタッフが明るかった','普通だった']},
+    {title:'特に良かった点を教えてください',type:'multi',options:['施術の効果','スタッフの対応','説明のわかりやすさ','待ち時間の少なさ','清潔感']},
+    {title:'ひとことご感想をお聞かせください',type:'text',options:[]}
+  ]
+};
+
+function applyQuestionTemplate(){
+  if(!canEdit()) return;
+  const sel = $('#questionTemplateSelect');
+  const key = sel.value;
+  if(!key) return alert('テンプレートを選択してください');
+  if(!confirm('テンプレートを適用すると現在の質問がすべて置き換わります。よろしいですか？')) return;
+  const qs = QUESTION_TEMPLATES[key].map(q=>({id:uid(), title:q.title, type:q.type, options:[...q.options]}));
+  mutateStore(s=>{ s.config.questions = qs; });
+  sel.value = '';
+}
+
+function hydrateStoreFromEditor(status){
+  const s = currentStore(); if(!s) return;
+  const draft = JSON.parse(JSON.stringify(s));
+  draft.name=$('#eName').value.trim()||draft.name;
+  draft.author=$('#eAuthor').value.trim();
+  draft.status=status || $('#eStatus').value;
+  draft.reviewUrl=$('#eReviewUrl').value.trim();
+  draft.config.appName=$('#eAppName').value.trim()||'Sarise Voice';
+  draft.config.subTitle=$('#eSubTitle').value.trim();
+  const errs = validateStoreDraft(draft);
+  if(status==='公開中' && errs.length){
+    renderChecklist(errs, draft);
+    return alert('公開前チェックでエラーがあります。');
+  }
+  mutateStore(s=>{
+    s.name=$('#eName').value.trim()||s.name;
+    s.author=$('#eAuthor').value.trim();
+    s.status=status || $('#eStatus').value;
+    s.reviewUrl=$('#eReviewUrl').value.trim();
+    s.config.appName=$('#eAppName').value.trim()||'Sarise Voice';
+    s.config.subTitle=$('#eSubTitle').value.trim();
+  }, {action: status==='公開中'?'公開保存':'下書き保存', detail:`ステータスを${status||$('#eStatus').value}に保存`});
+  renderChecklist([], draft);
+}
+
+function renderPreview(){
+  const s=currentStore(); if(!s){ $('#previewBox').innerHTML='<div class="muted">店舗を選択してください</div>'; return; }
+  const q = s.config.questions;
+  const cls = previewMode==='sp' ? 'preview phone' : 'preview';
+  $('#previewBox').className = cls;
+  $('#previewBox').innerHTML = `<strong>${s.config.appName}</strong><div class="muted">${s.name}へのご来店ありがとうございます</div><hr><div><strong>${q[0]?.title||''}</strong></div><div class="row">${(q[0]?.options||[]).map(o=>`<span class="tag">${o}</span>`).join('')}</div><div class="muted" style="margin-top:8px">全${q.length}問 / リアルタイム反映中</div>`;
+}
+
+function genQr(){
+  const u = ensureReflectedUrl(); if(!u) return;
+  if(u.length > 900) alert(`URLが長いため、端末によっては読み取りにくい可能性があります（${u.length}文字）。`);
+  const area = $('#qrArea');
+  area.innerHTML = `<div id="qrCanvas"></div><div class="muted" style="margin-top:6px">${currentStore()?.name||''}</div><div class="muted" style="word-break:break-all;font-size:11px;margin-top:2px">${u}</div>`;
+  new QRCode(document.getElementById('qrCanvas'), {
+    text: u,
+    width: 300,
+    height: 300,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+  setTimeout(()=>{
+    const canvas = area.querySelector('canvas');
+    if(canvas) $('#dlQrBtn').href = canvas.toDataURL('image/png');
+  }, 200);
+  mutateStore(s=>{s.qrReady=true;}, {log:false, invalidateUrl:false});
+}
+
+function ensureReflectedUrl(){
+  const u = $('#eDistUrl').value.trim();
+  if(!u){ alert('先に変更内容をURLに反映してください'); return ''; }
+  if(!isValidDistributionUrl(u)){ alert('配布URLが不正です。もう一度「変更内容をURLに反映」を押してください'); return ''; }
+  return u;
+}
+
+function isValidDistributionUrl(u){
+  try{
+    const parsed = new URL(u, location.href);
+    const hasStore = parsed.searchParams.has('s') || parsed.searchParams.has('store');
+    const hasReview = parsed.searchParams.has('u') || parsed.searchParams.has('url');
+    const isNotGoogle = !parsed.hostname.includes('google.com') && !parsed.hostname.includes('googleapis.com');
+    return hasStore && hasReview && isNotGoogle;
+  }catch{
+    return false;
+  }
+}
+
+function validateBaseUrl(url){
+  if(!url) return false;
+  try{
+    const p = new URL(url, location.href);
+    if(p.hostname && (p.hostname.includes('google.com') || p.hostname.includes('googleapis.com'))){
+      return false;
+    }
+    return ['https:','http:','file:'].includes(p.protocol);
+  }catch{
+    return false;
+  }
+}
+
+function reflectUrl(){
+  if(!canEdit()) return alert('閲覧者は反映できません');
+  const s = currentStore(); if(!s) return;
+  const baseUrl = getBaseUrl();
+  const errEl = $('#baseUrlErr');
+  if(!validateBaseUrl(baseUrl)){
+    errEl.textContent = '「配布先アプリURL」にGoogleのURLは使用できません。アプリのURL（https://sarisevoicetools.netlify.app/）を入力してください。';
+    errEl.style.display = '';
+    return;
+  }
+  errEl.style.display = 'none';
+  saveBaseUrl();
+  const draft = getEditorDraft();
+  const errs = validateStoreDraft(draft);
+  if(errs.length){ renderChecklist(errs, draft); return alert('入力エラーを解消してから反映してください'); }
+  const generated = buildDistributionUrl(draft);
+  mutateStore(store=>{
+    store.name=draft.name; store.author=draft.author; store.reviewUrl=draft.reviewUrl;
+    store.config.appName=draft.config.appName; store.config.subTitle=draft.config.subTitle;
+    store.config.questions=draft.config.questions;
+    store.url=generated;
+  }, {action:'URL反映', detail:'変更内容を配布URLに反映', invalidateUrl:false});
+  const refreshed = currentStore();
+  $('#eDistUrl').value = refreshed?.url || generated;
+  $('#openUrlBtn').href = $('#eDistUrl').value;
+  $('#saveState').textContent='URLへ反映済み';
+}
+
+function scheduleAutoSave(){
+  $('#saveState').textContent = '保存中...';
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(()=>{
+    const s = currentStore();
+    if(s) localStorage.setItem(LS.draft, JSON.stringify(s));
+    $('#saveState').textContent = '保存済み';
+  }, 500);
+}
+
+function restoreUndo(){ const raw = localStorage.getItem(LS.undo); if(!raw) return alert('復元データなし'); const s = JSON.parse(raw); const idx = stores.findIndex(v=>v.id===s.id); if(idx>=0){ stores[idx]=s; saveStores(); openEditor(s.id); pushHistory('復元', '直前状態に戻しました');} }
+function mockMetrics(){
+  const series30 = Array.from({length:30},()=>Math.floor(Math.random()*20)+1);
+  const qr = Math.floor(Math.random()*100)+20;
+  const url = Math.floor(Math.random()*90)+10;
+  return {answers:series30.reduce((a,b)=>a+b,0),rate:Math.floor(Math.random()*60)+30,clicks:Math.floor(Math.random()*90)+20,series30,source:{qr,url}};
+}
+function pickSeries(metrics, days){
+  const base = metrics.series30 || [];
+  return base.slice(-days);
+}
+function renderAnalytics(){
+  const s = stores.find(v=>v.id===$('#analyticsStore').value) || stores[0];
+  if(!s) return;
+  s.metrics = s.metrics || mockMetrics();
+  const rangeVal = $('#analyticsRange').value;
+  let days = Number(rangeVal)||30;
+  if(rangeVal==='custom'){
+    const from = $('#analyticsFrom').value ? new Date($('#analyticsFrom').value) : null;
+    const to = $('#analyticsTo').value ? new Date($('#analyticsTo').value) : null;
+    if(from && to && to>=from) days = Math.min(30, Math.max(1, Math.ceil((to-from)/(1000*60*60*24))+1));
+    else days = 7;
+  }
+  const series = pickSeries(s.metrics, days);
+  const prev = pickSeries(s.metrics, Math.min(30, days*2)).slice(0,days);
+  const sum = arr => arr.reduce((a,b)=>a+b,0);
+  const diff = sum(series)-sum(prev);
+  $('#kpi').innerHTML = [
+    ['回答数',sum(series)],['回答率',s.metrics.rate+'%'],['Googleレビュー遷移数',s.metrics.clicks],['最近更新',s.updatedAt]
+  ].map(([k,v])=>`<div class="card"><div class="muted">${k}</div><div style="font-size:22px;font-weight:700">${v}</div></div>`).join('');
+  $('#trendText').textContent = `${days}日間の回答数は前期間比 ${diff>=0?'+':''}${diff} 件です。`;
+  const draw=(el,data)=>{
+    const safe = (data||[]).map(v=>Math.max(0, Number(v)||0));
+    const max = Math.max(...safe, 1);
+    const chartHeight = 104;
+    el.innerHTML = safe.map(v=>{
+      const h = Math.max(8, Math.round((v/max) * chartHeight));
+      return `<div class="bar" style="height:${Math.min(chartHeight,h)}px" title="${v}"></div>`;
+    }).join('');
+  };
+  draw($('#chartMain'), series);
+  draw($('#chartSource'), [s.metrics.source?.qr||0, s.metrics.source?.url||0]);
+}
+
+function downloadAnalyticsCsv(){
+  const s = stores.find(v=>v.id===$('#analyticsStore').value) || stores[0];
+  if(!s) return;
+  const m = s.metrics || mockMetrics();
+  const rows = [['store','date_index','answers','source_qr','source_url']];
+  (m.series30||[]).forEach((v,i)=>rows.push([s.name, i+1, v, m.source?.qr||0, m.source?.url||0]));
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `sarise-analytics-${s.id}.csv`;
+  a.click();
+}
+
+function renderTemplates(){
+  $('#tplTable').innerHTML = templates.map(t=>`<tr><td>${t.name}</td><td>${t.category}</td><td>${t.updatedAt}</td><td class="row"><button class="btn" onclick="useTemplate('${t.id}')">新規作成に使う</button><button class="btn" onclick="dupTemplate('${t.id}')">複製</button><button class="btn" onclick="editTemplateName('${t.id}')">編集</button><button class="btn" ${canDelete()?'':'disabled'} onclick="delTemplate('${t.id}')">削除</button></td></tr>`).join('');
+}
+function useTemplate(id){ $('#newFromTemplate').value=id; document.querySelector('[data-tab="stores"]').click(); }
+function dupTemplate(id){ const t=templates.find(v=>v.id===id); const c=JSON.parse(JSON.stringify(t)); c.id=uid(); c.name+='（複製）'; c.updatedAt=now(); templates.unshift(c); saveTemplates(); }
+function editTemplateName(id){ if(!canEdit()) return; const t=templates.find(v=>v.id===id); const n=prompt('テンプレ名',t.name); if(n){t.name=n;t.updatedAt=now();saveTemplates();} }
+function delTemplate(id){ if(!canDelete()) return; templates=templates.filter(v=>v.id!==id); saveTemplates(); }
+
+function runBulkAction(name, handler){
+  const targets = selectedStores();
+  if(!targets.length) return alert('一括操作の対象店舗を選択してください。');
+  openConfirm(`一括操作: ${name}`, [`対象件数: ${targets.length}件`, 'この操作は取り消しできない場合があります。'], ()=>{
+    handler(targets);
+    closeConfirm();
+    saveStores();
+    pushHistory('一括操作', `${name} を ${targets.length}件に実行`);
+    alert(`${name}を実行しました（${targets.length}件）`);
+  });
+}
+
+async function bulkCopyUrls(){
+  const txt = selectedStores().map(s=>s.url).filter(Boolean).join('\n');
+  if(!txt) return alert('選択店舗にURLがありません。');
+  await navigator.clipboard.writeText(txt);
+  alert('選択店舗のURLをコピーしました。');
+}
+
+function updateRoleUi(){
+  const viewer = activeRole()==='閲覧者';
+  const editor = activeRole()==='編集者';
+  ['#createStoreBtn','#quickCreateStoreBtn','#quickDuplicateBtn','#saveDraftBtn','#applyBtn','#addQuestionBtn','#applyQuestionTemplateBtn'].forEach(sel=>$(sel).disabled = viewer);
+  $('#publishBtn').disabled = !canPublish();
+  ['#bulkPublishBtn','#bulkDraftBtn','#bulkApplyTemplateBtn'].forEach(sel=>$(sel).disabled = !canBulkPublish());
+  $('#restoreBtn').disabled = viewer;
+}
+
+// global for inline handlers
+window.openEditor=openEditor; window.duplicateStore=duplicateStore; window.deleteStore=deleteStore; window.previewFromList=previewFromList; window.qrFromList=qrFromList; window.goEdit=goEdit; window.copyStoreUrl=copyStoreUrl;
+window.moveQ=moveQ; window.removeQ=removeQ; window.updateQ=updateQ; window.updateOpt=updateOpt; window.addOpt=addOpt; window.delOpt=delOpt;
+window.useTemplate=useTemplate; window.dupTemplate=dupTemplate; window.editTemplateName=editTemplateName; window.delTemplate=delTemplate;
+window.toggleStoreSelection=toggleStoreSelection; window.restoreFromHistory=restoreFromHistory;
+
+// events
+$('#storeSearch').addEventListener('input', renderStores);
+$('#eBaseUrl').addEventListener('change', saveBaseUrl);
+$('#eBaseUrl').addEventListener('input', saveBaseUrl);
+$('#resetBaseUrlBtn').onclick = ()=>{ $('#eBaseUrl').value = DEFAULT_BASE_URL; saveBaseUrl(); $('#baseUrlErr').style.display='none'; };
+$('#createStoreBtn').onclick = createStoreFromTemplate;
+$('#quickCreateStoreBtn').onclick = ()=>{
+  if(!canEdit()) return alert('閲覧者は新規作成できません');
+  const t = templates[0];
+  const s = {id:uid(),name:`新規店舗-${stores.length+1}`,status:'下書き',updatedAt:now(),author:'',reviewUrl:'',config:JSON.parse(JSON.stringify(t.config)),url:'',metrics:mockMetrics(),templateId:t.id,qrReady:false,popReady:false,lastResponseAt:'未'};
+  stores.unshift(s); saveStores(); openEditor(s.id); document.querySelector('[data-tab="editor"]').click();
+};
+$('#quickDuplicateBtn').onclick = ()=>{
+  const targets = selectedStores();
+  if(targets.length!==1) return alert('複製したい店舗を1件だけ選択してください。');
+  duplicateStore(targets[0].id);
+};
+$('#addQuestionBtn').onclick = addQuestion;
+$('#applyQuestionTemplateBtn').onclick = applyQuestionTemplate;
+$('#saveDraftBtn').onclick = ()=>hydrateStoreFromEditor('下書き');
+$('#publishBtn').onclick = ()=>{ if(!canPublish()) return alert('管理者のみ公開できます'); hydrateStoreFromEditor('公開中'); };
+$('#restoreBtn').onclick = restoreUndo;
+$('#applyBtn').onclick = reflectUrl;
+$('#pcViewBtn').onclick = ()=>{ previewMode='pc'; renderPreview(); };
+$('#spViewBtn').onclick = ()=>{ previewMode='sp'; renderPreview(); };
+$('#copyUrlBtn').onclick = async ()=>{ const u=ensureReflectedUrl(); if(!u) return; await navigator.clipboard.writeText(u); };
+$('#openUrlBtn').onclick = ()=>{ const u=ensureReflectedUrl(); if(!u) return false; $('#openUrlBtn').href=u; };
+$('#genQrBtn').onclick = genQr;
+$('#popBtn').onclick = ()=>{ const n=currentStore()?.name||''; const w=window.open('','_blank'); w.document.write(`<h2>${n}</h2><img src="${$('#dlQrBtn').href}"/><p>1分アンケートにご協力ください</p>`); mutateStore(s=>{s.popReady=true;}, {log:false}); saveStores(); };
+$('#copyAllUrlsBtn').onclick = async ()=>{ const txt = stores.map(s=>s.url).filter(Boolean).join('\n'); if(!txt) return alert('URLがありません'); await navigator.clipboard.writeText(txt); alert('一括コピーしました'); };
+$('#analyticsStore').addEventListener('change', renderAnalytics);
+$('#analyticsRange').addEventListener('change', renderAnalytics);
+$('#analyticsFrom').addEventListener('change', renderAnalytics);
+$('#analyticsTo').addEventListener('change', renderAnalytics);
+$('#downloadCsvBtn').onclick = downloadAnalyticsCsv;
+$('#roleSel').addEventListener('change', ()=>{ renderStores(); renderTemplates(); openEditor(currentStoreId||stores[0]?.id); updateRoleUi(); });
+$('#selectAllStores').onchange = e=>{ stores.filter(s=>s.name.includes($('#storeSearch').value?.trim()||'')).forEach(s=>e.target.checked?selectedStoreIds.add(s.id):selectedStoreIds.delete(s.id)); renderStores(); };
+
+$('#bulkPublishBtn').onclick = ()=>{ if(!canBulkPublish()) return alert('管理者のみ公開切替できます'); runBulkAction('一括公開', targets=>targets.forEach(s=>s.status='公開中')); };
+$('#bulkDraftBtn').onclick = ()=>{ if(!canBulkPublish()) return alert('管理者のみ下書き切替できます'); runBulkAction('一括下書き', targets=>targets.forEach(s=>s.status='下書き')); };
+$('#bulkQrBtn').onclick = ()=>runBulkAction('一括QR生成', targets=>targets.forEach(s=>s.qrReady=true));
+$('#bulkPopBtn').onclick = ()=>runBulkAction('一括POP出力', targets=>targets.forEach(s=>s.popReady=true));
+$('#bulkCopyUrlBtn').onclick = bulkCopyUrls;
+$('#bulkApplyTemplateBtn').onclick = ()=>{
+  if(!canBulkPublish()) return alert('管理者のみテンプレ差し替えできます');
+  const t = templates.find(v=>v.id===$('#bulkTemplateSel').value);
+  runBulkAction('一括テンプレ差し替え', targets=>targets.forEach(s=>{s.config=JSON.parse(JSON.stringify(t.config)); s.templateId=t.id;}));
+};
+
+$('#confirmCancelBtn').onclick = closeConfirm;
+$('#confirmOkBtn').onclick = ()=>{ if(confirmAction) confirmAction(); };
+$('#confirmModalBack').onclick = e=>{ if(e.target.id==='confirmModalBack') closeConfirm(); };
+['#eName','#eAuthor','#eReviewUrl','#eAppName','#eSubTitle'].forEach(sel=>{
+  $(sel).addEventListener('input', ()=>renderChecklist());
+  $(sel).addEventListener('change', ()=>renderChecklist());
+});
+
+// ===== 新機能JS =====
+
+const LS_DASHBOARD = 'sv_dashboard_v1';
+const LS_RANKING = 'sv_ranking_v1';
+const LS_REPORT = 'sv_report_v1';
+const LS_DIAGNOSIS = 'sv_diagnosis_v1';
+
+// --- ダッシュボード ---
+function renderDashboard(){
+  const totalStores = stores.length;
+  const publishedStores = stores.filter(s=>s.status==='公開中').length;
+  const reports = JSON.parse(localStorage.getItem(LS_REPORT)||'[]');
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const monthlyReplies = reports.filter(r=>r.yearMonth===thisMonth).reduce((sum,r)=>sum+(Number(r.data.replyCount)||0),0);
+  const rankingData = JSON.parse(localStorage.getItem(LS_RANKING)||'[]');
+  let rankingImprovements = 0;
+  rankingData.forEach(r=>{
+    if(r.records.length>=2){
+      const first = r.records[0].rank;
+      const last = r.records[r.records.length-1].rank;
+      if(last < first) rankingImprovements++;
+    }
+  });
+
+  $('#dashKpi').innerHTML = [
+    ['管理店舗数', totalStores, '件'],
+    ['公開中の店舗', publishedStores, '件'],
+    ['今月の口コミ返信数', monthlyReplies, '件'],
+    ['順位改善件数', rankingImprovements, '件']
+  ].map(([label,num,unit])=>`<div class="card"><div class="kpi-num">${num}<span style="font-size:14px">${unit}</span></div><div class="kpi-label">${label}</div></div>`).join('');
+
+  const diagnoses = JSON.parse(localStorage.getItem(LS_DIAGNOSIS)||'[]');
+  $('#dashStoreTable').innerHTML = stores.map(s=>{
+    const latestRanks = rankingData.filter(r=>r.storeId===s.id).map(r=>r.records.slice(-1)[0]?.rank).filter(Boolean);
+    const bestRank = latestRanks.length ? Math.min(...latestRanks) : '-';
+    const diagnosis = diagnoses.filter(d=>(d.storeId && d.storeId===s.id)||(!d.storeId && d.storeName===s.name))[0];
+    const diagScore = diagnosis ? diagnosis.score+'点' : '-';
+    const answers30 = (s.metrics?.series30||[]).slice(-30).reduce((a,b)=>a+b,0);
+    const storeReplies = reports.filter(r=>r.storeId===s.id&&r.yearMonth===thisMonth).reduce((sum,r)=>sum+(Number(r.data.replyCount)||0),0);
+    return `<tr>
+      <td>${s.name}</td>
+      <td><span class="statusItem ${s.status==='公開中'?'ok':'warn'}">${s.status}</span></td>
+      <td>${s.updatedAt}</td>
+      <td>${answers30}</td>
+      <td>${storeReplies}</td>
+      <td>${bestRank}</td>
+      <td>${diagScore}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" class="muted">店舗がありません</td></tr>';
+
+  const dashData = JSON.parse(localStorage.getItem(LS_DASHBOARD)||'{}');
+  const actions = [
+    {id:'action1', text:'全店舗の月次レポートを送付する'},
+    {id:'action2', text:'順位が下がった店舗の施策を見直す'},
+    {id:'action3', text:'未返信口コミがある店舗に対応する'}
+  ];
+  $('#dashActions').innerHTML = actions.map(a=>`<div class="row" style="padding:6px 0;border-bottom:1px solid var(--line)">
+    <input type="checkbox" id="${a.id}" ${dashData[a.id]?'checked':''} onchange="saveDashAction('${a.id}',this.checked)" />
+    <label for="${a.id}" style="${dashData[a.id]?'text-decoration:line-through;color:var(--muted)':''}">${a.text}</label>
+  </div>`).join('');
+}
+
+function saveDashAction(id, checked){
+  const data = JSON.parse(localStorage.getItem(LS_DASHBOARD)||'{}');
+  data[id] = checked;
+  localStorage.setItem(LS_DASHBOARD, JSON.stringify(data));
+  renderDashboard();
+}
+window.saveDashAction = saveDashAction;
+
+// --- 無料診断 ---
+function calcDiagnosisScore(inputs){
+  let score = 0;
+  const details = [];
+  const reviews = Number(inputs.reviewCount)||0;
+  const reviewScore = reviews>=50?20:reviews>=20?12:reviews>=10?6:2;
+  score += reviewScore;
+  details.push({label:'口コミ件数', score:reviewScore, max:20, comment:reviews>=50?'十分な口コミ数です':reviews>=20?'もう少し増やしましょう':'口コミを積極的に集めましょう'});
+
+  const rating = Number(inputs.avgRating)||0;
+  const ratingScore = rating>=4.5?20:rating>=4.0?14:rating>=3.5?8:2;
+  score += ratingScore;
+  details.push({label:'平均評価', score:ratingScore, max:20, comment:rating>=4.5?'高評価を維持しています':rating>=4.0?'良い評価です':'口コミ品質改善が必要です'});
+
+  const photos = Number(inputs.photoCount)||0;
+  const photoScore = photos>=20?15:photos>=10?9:photos>=5?4:1;
+  score += photoScore;
+  details.push({label:'写真枚数', score:photoScore, max:15, comment:photos>=20?'写真が充実しています':photos>=10?'写真を追加しましょう':'写真を増やしてください'});
+
+  const postMap = {'1週間以内':15,'1ヶ月以内':9,'3ヶ月以上前':3,'投稿なし':0};
+  const postScore = postMap[inputs.lastPost]??0;
+  score += postScore;
+  details.push({label:'投稿頻度', score:postScore, max:15, comment:postScore===15?'定期投稿できています':postScore>=9?'月1回以上の投稿を目指しましょう':'定期的な投稿が必要です'});
+
+  const replyMap = {'全件返信':15,'一部返信':7,'返信なし':0};
+  const replyScore = replyMap[inputs.replyStatus]??0;
+  score += replyScore;
+  details.push({label:'口コミ返信', score:replyScore, max:15, comment:replyScore===15?'全件返信できています':replyScore>=7?'未返信口コミに対応しましょう':'口コミへの返信を始めましょう'});
+
+  const rank = Number(inputs.currentRank)||0;
+  const rankScore = rank>=1&&rank<=3?15:rank<=10?8:rank<=20?3:0;
+  score += rankScore;
+  details.push({label:'検索順位', score:rankScore, max:15, comment:rankScore===15?'トップ3に入っています':rankScore>=8?'トップ3を目指しましょう':'順位改善が必要です'});
+
+  const grade = score>=80?'A':score>=60?'B':score>=40?'C':'D';
+  const gradeText = {A:'優秀', B:'改善余地あり', C:'要改善', D:'緊急改善が必要'};
+  return {score, grade, gradeText:gradeText[grade], details};
+}
+
+function runDiagnosis(){
+  const inputs = {
+    storeName: $('#diagStoreName').value.trim(),
+    industry: $('#diagIndustry').value,
+    hasGbp: $('#diagHasGbp').value,
+    reviewCount: $('#diagReviewCount').value,
+    avgRating: $('#diagAvgRating').value,
+    photoCount: $('#diagPhotoCount').value,
+    lastPost: $('#diagLastPost').value,
+    replyStatus: $('#diagReplyStatus').value,
+    competitorAvg: $('#diagCompetitorAvg').value,
+    currentRank: $('#diagCurrentRank').value
+  };
+  if(!inputs.storeName) return alert('店舗名を入力してください');
+  const result = calcDiagnosisScore(inputs);
+  const topImprovements = [...result.details].sort((a,b)=>(a.score/a.max)-(b.score/b.max)).slice(0,3);
+
+  $('#diagResult').innerHTML = `
+    <div class="score-circle grade-${result.grade}">
+      <div>${result.score}</div>
+      <div class="score-grade">${result.grade}（${result.gradeText}）</div>
+    </div>
+    <h3>${inputs.storeName} 診断結果</h3>
+    <table>
+      <thead><tr><th>項目</th><th>得点</th><th>満点</th><th>コメント</th></tr></thead>
+      <tbody>${result.details.map(d=>`<tr><td>${d.label}</td><td>${d.score}</td><td>${d.max}</td><td>${d.comment}</td></tr>`).join('')}</tbody>
+    </table>
+    <div class="card" style="margin-top:12px;background:#eff6ff">
+      <h3>今すぐ改善できる3つのポイント</h3>
+      <ol>${topImprovements.map(d=>`<li><strong>${d.label}</strong>（${d.score}/${d.max}点）: ${d.comment}</li>`).join('')}</ol>
+    </div>
+    <div style="margin-top:10px"><button class="btn pri" onclick="printDiagnosis()">診断レポートを印刷・保存</button></div>
+  `;
+  $('#diagResult').style.display = 'block';
+
+  const saved = JSON.parse(localStorage.getItem(LS_DIAGNOSIS)||'[]');
+  const diagStoreId = document.getElementById('diagStoreSelect')?.value || '';
+  saved.unshift({id:uid(), storeId:diagStoreId, storeName:inputs.storeName, date:now(), score:result.score, grade:result.grade, inputs});
+  localStorage.setItem(LS_DIAGNOSIS, JSON.stringify(saved.slice(0,10)));
+  renderDashboard();
+}
+
+function printDiagnosis(){
+  const section = document.getElementById('tab-diagnosis');
+  section.classList.add('printTarget');
+  window.addEventListener('afterprint', function handler(){
+    section.classList.remove('printTarget');
+    window.removeEventListener('afterprint', handler);
+  });
+  window.print();
+}
+
+function renderDiagnosisStores(){
+  const sel = document.getElementById('diagStoreSelect');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">--- 店舗を選択 ---</option>' + stores.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+function onDiagStoreChange(sel){
+  const store = stores.find(s=>s.id===sel.value);
+  if(store) document.getElementById('diagStoreName').value = store.name;
+}
+window.onDiagStoreChange = onDiagStoreChange;
+window.runDiagnosis = runDiagnosis;
+window.printDiagnosis = printDiagnosis;
+
+// --- 順位トラッキング ---
+let rankingEntries = JSON.parse(localStorage.getItem(LS_RANKING)||'[]');
+
+function saveRankingEntries(){ localStorage.setItem(LS_RANKING, JSON.stringify(rankingEntries)); }
+
+function renderRanking(){
+  $('#rankingStoreSelect').innerHTML = stores.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  $('#rankingInputList').innerHTML = rankingEntries.map(r=>`<div class="panel" style="margin-bottom:8px">
+    <div class="row" style="justify-content:space-between">
+      <div><strong>${r.storeName}</strong> / ${r.keyword}</div>
+      <button class="btn" onclick="showRankingChart('${r.id}')">グラフ表示</button>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <input type="number" id="rankInput_${r.id}" min="1" max="100" placeholder="今週の順位" style="max-width:150px" />
+      <button class="btn pri" onclick="recordRanking('${r.id}')">記録する</button>
+    </div>
+  </div>`).join('') || '<div class="muted">キーワードが登録されていません</div>';
+
+  $('#rankingTable').innerHTML = rankingEntries.map(r=>{
+    const first = r.records[0]?.rank || '-';
+    const last = r.records.slice(-1)[0]?.rank || '-';
+    const change = (first!=='-'&&last!=='-') ? first-last : null;
+    const changeText = change===null ? '-' : change>0 ? `<span class="up">↑${change}</span>` : change<0 ? `<span class="down">↓${Math.abs(change)}</span>` : '<span class="same">→</span>';
+    return `<tr>
+      <td>${r.storeName}</td><td>${r.keyword}</td>
+      <td>${first}</td><td>${last}</td>
+      <td>${changeText}</td><td>${r.records.length}</td>
+      <td><button class="btn" onclick="deleteRankingEntry('${r.id}')">削除</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" class="muted">データがありません</td></tr>';
+}
+
+function addRankingKeyword(){
+  const storeId = $('#rankingStoreSelect').value;
+  const storeName = stores.find(s=>s.id===storeId)?.name||'';
+  const keyword = $('#rankingKeyword').value.trim();
+  if(!keyword) return alert('キーワードを入力してください');
+  if(!storeId) return alert('店舗を選択してください');
+  rankingEntries.push({id:uid(), storeId, storeName, keyword, records:[]});
+  saveRankingEntries();
+  $('#rankingKeyword').value='';
+  renderRanking();
+}
+
+function recordRanking(id){
+  const rank = Number(document.getElementById('rankInput_'+id)?.value);
+  if(!rank||rank<1||rank>100) return alert('1〜100の順位を入力してください');
+  const entry = rankingEntries.find(r=>r.id===id);
+  if(!entry) return;
+  entry.records.push({date:new Date().toISOString().slice(0,10), rank});
+  saveRankingEntries();
+  renderRanking();
+  showRankingChart(id);
+  renderDashboard();
+}
+
+function deleteRankingEntry(id){
+  rankingEntries = rankingEntries.filter(r=>r.id!==id);
+  saveRankingEntries();
+  renderRanking();
+  renderDashboard();
+}
+
+function showRankingChart(id){
+  const entry = rankingEntries.find(r=>r.id===id);
+  if(!entry||!entry.records.length){ $('#rankingChart').innerHTML='<div class="muted">データがありません</div>'; return; }
+  const chartHeight = 104;
+  const bars = entry.records.map(rec=>{
+    const h = Math.max(8, Math.round(((101-rec.rank)/100)*chartHeight));
+    return `<div class="rank-bar" style="height:${Math.min(chartHeight,h)}px" title="${rec.date}: ${rec.rank}位"></div>`;
+  }).join('');
+  $('#rankingChart').innerHTML = `<div class="muted" style="margin-bottom:4px"><strong>${entry.storeName}</strong> / ${entry.keyword}</div>
+    <div class="chart">${bars}</div>
+    <div class="muted" style="font-size:11px;margin-top:4px">※ バーが高いほど順位が上（1位に近い）</div>`;
+}
+
+window.addRankingKeyword = addRankingKeyword;
+window.recordRanking = recordRanking;
+window.deleteRankingEntry = deleteRankingEntry;
+window.showRankingChart = showRankingChart;
+
+// --- 月次レポート ---
+let savedReports = JSON.parse(localStorage.getItem(LS_REPORT)||'[]');
+
+function renderMonthly(){
+  $('#reportStoreSelect').innerHTML = stores.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+function generateMonthlyReport(){
+  const storeId = $('#reportStoreSelect').value;
+  const store = stores.find(s=>s.id===storeId);
+  if(!store) return alert('店舗を選択してください');
+  const yearMonth = $('#reportYearMonth').value;
+  if(!yearMonth) return alert('対象年月を選択してください');
+
+  const data = {
+    reviewsNew: Number($('#reportReviewsNew').value)||0,
+    reviewsPrev: Number($('#reportReviewsPrev').value)||0,
+    ratingNew: Number($('#reportRatingNew').value)||0,
+    ratingPrev: Number($('#reportRatingPrev').value)||0,
+    gbpViewNew: Number($('#reportGbpViewNew').value)||0,
+    gbpViewPrev: Number($('#reportGbpViewPrev').value)||0,
+    replyCount: Number($('#reportReplyCount').value)||0,
+    postCount: Number($('#reportPostCount').value)||0,
+    rankChanges: $('#reportRankChanges').value.trim(),
+    nextActions: $('#reportNextActions').value.trim(),
+    notes: $('#reportNotes').value.trim()
+  };
+
+  const [year, month] = yearMonth.split('-');
+  const displayMonth = `${year}年${Number(month)}月`;
+
+  const diff = (n, p, isRating) => {
+    const d = isRating ? parseFloat((n-p).toFixed(1)) : n-p;
+    if(d>0) return `<span class="up">+${d} ↑</span>`;
+    if(d<0) return `<span class="down">${d} ↓</span>`;
+    return `<span class="same">±0 →</span>`;
+  };
+
+  $('#reportPreview').innerHTML = `<div class="report-preview">
+    <div style="border-bottom:2px solid var(--pri);padding-bottom:8px;margin-bottom:16px">
+      <h2 style="margin:0;color:var(--pri)">【${store.name}】MEO月次レポート</h2>
+      <div class="muted">対象期間：${displayMonth} ／ 作成日：${now().split(' ')[0]}</div>
+    </div>
+    <h3>今月の成果サマリー</h3>
+    <table>
+      <tr><td>口コミ件数</td><td><strong>${data.reviewsNew}件</strong></td><td>（先月比 ${diff(data.reviewsNew,data.reviewsPrev)}）</td></tr>
+      <tr><td>平均評価</td><td><strong>${data.ratingNew}</strong></td><td>（先月比 ${diff(data.ratingNew,data.ratingPrev,true)}）</td></tr>
+      <tr><td>GBP閲覧数</td><td><strong>${data.gbpViewNew.toLocaleString()}</strong></td><td>（先月比 ${diff(data.gbpViewNew,data.gbpViewPrev)}）</td></tr>
+    </table>
+    <h3>実施施策</h3>
+    <p>口コミ返信：<strong>${data.replyCount}件</strong> ／ GBP投稿：<strong>${data.postCount}回</strong></p>
+    <h3>順位変動</h3>
+    <p>${data.rankChanges||'（記載なし）'}</p>
+    <h3>来月の改善施策</h3>
+    <p>${data.nextActions||'（記載なし）'}</p>
+    <h3>特記事項</h3>
+    <p>${data.notes||'（記載なし）'}</p>
+  </div>`;
+  $('#reportPreview').style.display = 'block';
+  $('#printReportPanel').style.display = 'block';
+
+  savedReports.unshift({id:uid(), storeId, storeName:store.name, yearMonth, generatedAt:now(), data});
+  savedReports = savedReports.slice(0,24);
+  localStorage.setItem(LS_REPORT, JSON.stringify(savedReports));
+  renderDashboard();
+}
+
+function printReport(){
+  const section = document.getElementById('tab-monthly');
+  section.classList.add('printTarget');
+  window.addEventListener('afterprint', function handler(){
+    section.classList.remove('printTarget');
+    window.removeEventListener('afterprint', handler);
+  });
+  window.print();
+}
+
+window.generateMonthlyReport = generateMonthlyReport;
+window.printReport = printReport;
+
+// boot
+if(stores.length===0){
+  const t = templates[0];
+  const s = {id:uid(),name:'サンプル店舗',status:'下書き',updatedAt:now(),author:'管理者',reviewUrl:'',config:JSON.parse(JSON.stringify(t.config)),metrics:mockMetrics(),url:'',templateId:t.id,qrReady:false,popReady:false,lastResponseAt:'未'};
+  stores.push(s); saveStores();
+}
+initBaseUrl(); renderAuthorOptions(); renderTemplates(); renderStores(); openEditor(stores[0]?.id); renderAnalytics(); renderHistory(); updateRoleUi(); renderDashboard(); renderRanking(); renderMonthly(); renderDiagnosisStores();
+</script>
+</body>
+</html>
