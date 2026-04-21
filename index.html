@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ご来店ありがとうございました | Sarise</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: #fffdf8;
+  --card: #fff;
+  --primary: #c84b2f;
+  --pl: #f5e6e2;
+  --pd: #8b3320;
+  --accent: #e8a020;
+  --al: #fef3cd;
+  --text: #2c2017;
+  --muted: #8c7b6b;
+  --border: #ede5db;
+  --ok: #2d7a4f;
+  --okl: #e8f5ee;
+  --r: 14px;
+  --sh: 0 4px 20px rgba(44, 32, 23, .09);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Zen Maru Gothic', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+.w { max-width: 500px; margin: 0 auto; padding: 1.2rem 1rem 2.5rem; }
+.hd { text-align: center; padding: 1.5rem 0 1.2rem; }
+.hd em { font-size: 2.4rem; display: block; margin-bottom: .4rem; font-style: normal; }
+.hd h1 { font-size: 1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hd p { font-size: .78rem; color: var(--muted); line-height: 1.7; margin-top: .3rem; }
+.pg { margin: .8rem 0 1rem; }
+.pgl { font-size: .72rem; color: var(--muted); display: flex; justify-content: space-between; margin-bottom: .35rem; }
+.pgb { height: 5px; background: var(--border); border-radius: 999px; overflow: hidden; }
+.pgf { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 999px; transition: width .45s ease; }
+.card { background: var(--card); border-radius: var(--r); padding: 1.3rem; box-shadow: var(--sh); border: 1px solid var(--border); margin-bottom: .8rem; display: none; }
+.card.on { display: block; }
+.ql { font-size: .7rem; font-weight: 700; color: var(--primary); letter-spacing: .1em; margin-bottom: .45rem; display: flex; align-items: center; gap: .35rem; }
+.ql::before { content: ''; width: 18px; height: 3px; background: var(--primary); border-radius: 2px; }
+.qh { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; line-height: 1.5; }
+.star-options { display: flex; flex-direction: column; gap: .5rem; margin-bottom: .5rem; }
+.star-opt {
+  display: grid;
+  grid-template-columns: minmax(4.8em, auto) minmax(0, 1fr) auto 24px;
+  align-items: center;
+  gap: .45rem;
+  padding: .65rem .9rem .65rem .8rem;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  overflow: hidden;
+}
+.star-opt.on, .star-opt:hover { border-color: var(--accent); background: var(--al); }
+.star-opt-stars { font-size: 1.1rem; line-height: 1; flex-shrink: 0; white-space: nowrap; }
+.star-opt-label {
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--muted);
+  min-width: 0;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.star-opt-num { font-size: .78rem; color: var(--muted); font-weight: 500; white-space: nowrap; }
+.star-check { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: .7rem; justify-self: end; }
+.star-opt.on .star-check { background: var(--accent); border-color: var(--accent); color: #fff; }
+.star-opt.on .star-opt-label { color: var(--pd); }
+.star-opt.on .star-opt-num { color: var(--accent); font-weight: 700; }
+.chips { display: flex; flex-wrap: wrap; gap: .45rem; }
+.chip { padding: .45rem .9rem; border-radius: 999px; border: 1.5px solid var(--border); background: var(--bg); font-size: .82rem; font-weight: 500; color: var(--muted); cursor: pointer; }
+.chip.on { background: var(--pl); border-color: var(--primary); color: var(--pd); font-weight: 700; }
+.sl { font-size: .82rem; font-weight: 700; margin: .85rem 0 .45rem; color: var(--muted); }
+textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; padding: .75rem .9rem; font-size: .88rem; background: var(--bg); min-height: 85px; line-height: 1.7; }
+.cc { font-size: .7rem; color: var(--muted); text-align: right; margin-top: .25rem; }
+.note { background: var(--al); border-radius: 8px; padding: .55rem .8rem; font-size: .75rem; color: #7a5a10; margin-top: .55rem; line-height: 1.6; }
+.nav { display: flex; gap: .5rem; margin-top: 1rem; }
+.nx { flex: 1; padding: .78rem; background: var(--primary); color: #fff; border: none; border-radius: 10px; font-size: .9rem; font-weight: 700; cursor: pointer; }
+.nx:disabled { opacity: .38; cursor: not-allowed; }
+.bk { padding: .78rem 1rem; background: var(--bg); color: var(--muted); border: 1.5px solid var(--border); border-radius: 10px; font-size: .85rem; cursor: pointer; }
+.lcard,.rcard { background: var(--card); border-radius: var(--r); padding: 1.3rem; box-shadow: var(--sh); border: 1px solid var(--border); display: none; }
+.lcard.on,.rcard.on { display: block; }
+.rhd { text-align: center; margin-bottom: 1.1rem; }
+.rtl { font-size: 1.05rem; font-weight: 700; color: var(--ok); }
+.rsb { font-size: .78rem; color: var(--muted); margin-top: .25rem; line-height: 1.6; }
+.rbox { background: var(--okl); border: 1.5px solid #a8d5be; border-radius: 10px; padding: 1rem; font-size: .88rem; line-height: 1.95; color: var(--text); white-space: pre-wrap; margin-bottom: .8rem; }
+.bcp,.bgg,.brg { width: 100%; border-radius: 10px; padding: .82rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: .45rem; text-decoration: none; }
+.bcp { background: var(--ok); color: #fff; border: none; margin-bottom: .6rem; }
+.bgg { background: #4285f4; color: #fff; border: none; margin-bottom: .6rem; }
+.brg { background: var(--bg); color: var(--muted); border: 1.5px solid var(--border); }
+.foot { text-align: center; margin-top: 1.5rem; font-size: .7rem; color: var(--muted); opacity: .6; }
+#toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--text); color: #fff; padding: .6rem 1.3rem; border-radius: 999px; font-size: .82rem; opacity: 0; transition: all .28s; z-index: 999; white-space: nowrap; pointer-events: none; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (max-width: 420px) {
+  .star-opt { grid-template-columns: minmax(4.2em, auto) minmax(0, 1fr) auto 20px; gap: .35rem; }
+  .star-opt-stars { font-size: 1rem; }
+  .star-opt-label { font-size: .8rem; }
+  .star-opt-num { font-size: .75rem; }
+}
+</style>
+</head>
+<body>
+<div class="w">
+  <div class="hd">
+    <em>🍽️</em>
+    <h1 id="snm">ご来店ありがとうございます</h1>
+    <p>簡単なアンケートにお答えいただくと<br>口コミ文を自動で作成します ✨</p>
+  </div>
+  <div class="pg" id="pgw">
+    <div class="pgl"><span id="ptxt">質問 1 / 7</span><span id="ppct">0%</span></div>
+    <div class="pgb"><div class="pgf" id="pf" style="width:0%"></div></div>
+  </div>
+
+  <div id="qContainer"></div>
+
+  <div class="lcard" id="lcard"><div style="font-size:1rem;font-weight:700">口コミ文を作成中です</div><div style="font-size:.85rem;color:var(--muted);margin-top:.6rem">AIがご回答をもとに文章を生成しています...</div></div>
+
+  <div class="rcard" id="rcard">
+    <div class="rhd"><div class="rtl">口コミ文ができました！</div><div class="rsb">下の文章をコピーして<br>Googleの口コミに貼り付けてください</div></div>
+    <div class="rbox" id="gentext" onclick="cpReview()">（生成中...）</div>
+    <div id="charCount" style="text-align:right;font-size:.75rem;color:var(--muted);margin-top:.3rem"></div>
+    <button class="bcp" id="bcopy" onclick="cpReview()">📋 口コミ文をコピーする</button>
+    <a class="bgg" id="bgg" href="#" target="_blank" rel="noopener">🔍 Googleの口コミページを開く</a>
+    <button class="brg" onclick="regen()">🔄 別の文章を作り直す</button>
+  </div>
+  <div class="foot">Powered by Sarise</div>
+</div>
+<div id="toast"></div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const STORE = params.get('store') || params.get('s') || 'お店';
+const GG_URL = params.get('url') || params.get('u') || '';
+
+// cfg パラメータをデコードして質問配列を取得
+const cfgRaw = params.get('cfg');
+let CFG = null;
+try { if(cfgRaw) CFG = JSON.parse(decodeURIComponent(escape(atob(cfgRaw)))); } catch(e){}
+
+const DEFAULT_QUESTIONS = [
+  {id:'dq1',title:'全体的なご満足度を教えてください',type:'single',options:['最高でした！','良かったです','普通でした','もう少しでした','がっかりでした']},
+  {id:'dq2',title:'今回のご来店のきっかけを教えてください',type:'single',options:['Instagram','食べログ','ホットペッパー','ぐるなび','Google検索','お店のHP','知人・友人の紹介','もともと知っていた','通りがかり']},
+  {id:'dq3',title:'今日の来店目的を教えてください',type:'single',options:['ランチ','ディナー','記念日・お祝い','デート','接待・会食','友人との食事','家族での食事','ひとりごはん']},
+  {id:'dq4',title:'料理の満足度を教えてください',type:'single',options:['とても美味しかった','美味しかった','普通だった','少し残念だった']},
+  {id:'dq5',title:'スタッフの対応はいかがでしたか？',type:'single',options:['とても親切だった','丁寧だった','普通だった','少し残念だった']},
+  {id:'dq6',title:'特に良かった料理・メニューはありますか？',type:'text',options:[]},
+  {id:'dq7',title:'ひとことご感想をお聞かせください',type:'text',options:[]}
+];
+
+const QUESTIONS = (CFG?.questions?.length) ? CFG.questions : DEFAULT_QUESTIONS;
+const TOTAL = QUESTIONS.length;
+let ANS = new Array(TOTAL).fill(null);
+
+// 店舗名・口コミURL設定
+document.getElementById('snm').textContent = STORE + 'へのご来店ありがとうございます';
+const bggEl = document.getElementById('bgg');
+if(GG_URL){
+  bggEl.href = GG_URL;
+} else {
+  bggEl.removeAttribute('href');
+  bggEl.style.opacity = '0.4';
+  bggEl.style.cursor = 'not-allowed';
+  bggEl.title = '口コミURLが設定されていません';
+  bggEl.onclick = e => { e.preventDefault(); alert('口コミURLが設定されていません。管理画面で口コミURLを登録し、QRコードを再生成してください。'); };
+}
+
+// 質問カードを動的に生成
+function buildQCards(){
+  const container = document.getElementById('qContainer');
+  const starSymbols = ['★★★★★','★★★★','★★★','★★','★'];
+  container.innerHTML = QUESTIONS.map((q, i) => {
+    const n = i + 1;
+    const isFirst = i === 0;
+    const isLast = i === QUESTIONS.length - 1;
+    const qlLabel = isLast ? `質問 ${n}（最後です！）` : `質問 ${n}`;
+    const onNext = isLast ? 'startGen()' : `qNext(${n})`;
+    const nextLabel = isLast ? '✨ 口コミ文を作成する' : '次へ →';
+
+    let body = '';
+    let nextDisabled = true;
+
+    if(isFirst && q.type !== 'text'){
+      // Q1 はスター UI
+      const opts = q.options || ['最高でした！','良かったです','普通でした','もう少しでした','がっかりでした'];
+      body = `<div class="star-options">${[5,4,3,2,1].map((v,j) =>
+        `<div class="star-opt" onclick="setStar(${v})">` +
+        `<div class="star-opt-stars">${starSymbols[j] || '★'}</div>` +
+        `<div class="star-opt-label">${opts[j] || ''}</div>` +
+        `<div class="star-opt-num">${v}点</div>` +
+        `<div class="star-check" id="sc${v}"></div>` +
+        `</div>`
+      ).join('')}</div>`;
+      nextDisabled = true;
+    } else if(q.type === 'text'){
+      body = `<textarea id="ta_${n}" placeholder="（なければ空白でもOKです）" oninput="ccount(this,'cc_${n}')" maxlength="150" autocomplete="off"></textarea>` +
+             `<div class="cc" id="cc_${n}">0 / 150文字</div>`;
+      nextDisabled = false; // 自由記述は任意
+    } else {
+      // single / multi はチップ UI
+      const isMulti = q.type === 'multi';
+      body = `<div class="chips" id="cpg_${n}">${(q.options || []).map(opt =>
+        `<div class="chip" onclick="pickDyn(this,${n},${isMulti})">${opt}</div>`
+      ).join('')}</div>`;
+      nextDisabled = true;
+    }
+
+    const backBtn = isFirst ? '' : `<button class="bk" onclick="qBack(${n})">← 戻る</button>`;
+    const nextBtn = `<button class="nx" id="nb${n}" onclick="${onNext}"${nextDisabled ? ' disabled' : ''}>${nextLabel}</button>`;
+    const nav = `<div class="nav">${backBtn}${nextBtn}</div>`;
+
+    return `<div class="card${isFirst ? ' on' : ''}" id="q${n}">` +
+           `<div class="ql">${qlLabel}</div>` +
+           `<div class="qh">${q.title}</div>` +
+           `${body}${nav}</div>`;
+  }).join('');
+}
+
+function upProg(n){
+  const p = Math.round(((n - 1) / TOTAL) * 100);
+  document.getElementById('pf').style.width = p + '%';
+  document.getElementById('ptxt').textContent = '質問 ' + n + ' / ' + TOTAL;
+  document.getElementById('ppct').textContent = p + '%';
+}
+
+function showQ(n){
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('on'));
+  document.getElementById('lcard').classList.remove('on');
+  document.getElementById('rcard').classList.remove('on');
+  const el = document.getElementById('q' + n);
+  if(el) el.classList.add('on');
+  upProg(n);
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function qNext(n){ showQ(n + 1); }
+function qBack(n){ showQ(n - 1); }
+// 後方互換エイリアス
+function go(n){ qNext(n); }
+function back(n){ qBack(n); }
+
+// Q1 スター選択
+function setStar(v){
+  ANS[0] = v;
+  document.querySelectorAll('.star-opt').forEach(o => o.classList.remove('on'));
+  document.querySelectorAll('.star-check').forEach(c => c.textContent = '');
+  document.querySelectorAll('.star-opt')[5 - v].classList.add('on');
+  const sc = document.getElementById('sc' + v);
+  if(sc) sc.textContent = '✓';
+  const nb = document.getElementById('nb1');
+  if(nb) nb.disabled = false;
+}
+
+// チップ選択（single / multi）
+function pickDyn(el, n, isMulti){
+  const grp = document.getElementById('cpg_' + n);
+  const i = n - 1;
+  if(!isMulti){
+    grp.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+    el.classList.add('on');
+    ANS[i] = el.textContent.trim();
+  } else {
+    el.classList.toggle('on');
+    ANS[i] = Array.from(grp.querySelectorAll('.chip.on')).map(c => c.textContent.trim());
+  }
+  const nb = document.getElementById('nb' + n);
+  if(nb) nb.disabled = isMulti ? (ANS[i].length === 0) : false;
+}
+
+function ccount(el, id){ document.getElementById(id).textContent = el.value.length + ' / ' + el.maxLength + '文字'; }
+
+// テキスト回答を収集
+function collectTextAnswers(){
+  QUESTIONS.forEach((q, i) => {
+    if(q.type === 'text'){
+      const ta = document.getElementById('ta_' + (i + 1));
+      if(ta) ANS[i] = ta.value.trim();
+    }
+  });
+}
+
+function sanitizeGeneratedText(text){
+  const normalized = String(text || '')
+    .replace(/\r?\n+/g, '')
+    .replace(/[ \t\u3000]+/g, '')
+    .trim();
+  return normalized
+    .replace(/^「(.+)」$/, '$1')
+    .replace(/^"(.+)"$/, '$1')
+    .trim();
+}
+
+function buildReview(){
+  collectTextAnswers();
+
+  const TRIGGER_MAP = {
+    'Instagram':                  'Instagramで見て気になり、',
+    'TikTok':                     'TikTokで見て気になり、',
+    '食べログ':                   '食べログを見て気になり、',
+    'ホットペッパー':             'ホットペッパーを見て気になり、',
+    'ホットペッパービューティー': 'ホットペッパービューティーを見て気になり、',
+    'ぐるなび':                   'ぐるなびを見て気になり、',
+    'Google検索':                 'Googleで検索して見つけ、',
+    '知人の紹介':                 '知人に紹介してもらい、',
+    'もともと知っていた':         '以前から気になっていて、',
+    '以前から通っている':         '以前から通っており、今回も',
+    '通りがかり':                 'たまたま通りがかり、気になって',
+    'チラシ':                     'チラシを見て気になり、',
+  };
+
+  const PURPOSE_MAP = {
+    'ランチ':         'ランチで利用しました。',
+    'ディナー':       'ディナーで利用しました。',
+    '誕生日':         '誕生日のお祝いで利用しました。',
+    '記念日・お祝い': '記念日のお祝いで利用しました。',
+    'デート':         'デートで利用しました。',
+    '接待・会食':     '接待で利用しました。',
+    '友人との食事':   '友人と来店しました。',
+    '家族での食事':   '家族で来店しました。',
+    '一人ご飯':       '一人で来店しました。',
+    'ひとりごはん':   '一人で来店しました。',
+  };
+
+  const ATMOSPHERE_MAP = {
+    'とても良かった':       '店内の雰囲気がとても良く、居心地が良かったです。',
+    '落ち着けた':           '店内は落ち着いた雰囲気でとても居心地が良かったです。',
+    '賑やかで楽しかった':   '店内は賑やかで楽しい雰囲気でした。',
+    'とてもおしゃれだった': '店内がとてもおしゃれで居心地が良かったです。',
+    '清潔感があった':       '店内は清潔感があり、好印象でした。',
+    'スタッフが明るかった': 'スタッフの方々が明るく、良い雰囲気でした。',
+    '普通だった':           null,
+  };
+
+  let triggerPart = '';
+  let purposePart = '';
+  let atmosphereSentence = '';
+  let menuSentence = '';
+  let goodPointSentence = '';
+  let goodPointAns = [];
+  let freeSentence = '';
+  let satisfactionHigh = false;
+
+  QUESTIONS.forEach((q, i) => {
+    const ans = ANS[i];
+    const title = q.title || '';
+
+    if(i === 0){
+      satisfactionHigh = (typeof ans === 'number') ? ans >= 4 : false;
+      return;
+    }
+    if(ans === null || ans === undefined || ans === '') return;
+    if(Array.isArray(ans) && ans.length === 0) return;
+
+    const ansStr = Array.isArray(ans) ? ans[0] : String(ans);
+
+    if(title.includes('きっかけ')){
+      triggerPart = TRIGGER_MAP[ansStr] || (ansStr + 'をきっかけに、');
+      return;
+    }
+    if(title.includes('目的')){
+      purposePart = PURPOSE_MAP[ansStr] || (ansStr + 'で利用しました。');
+      return;
+    }
+    if(title.includes('雰囲気')){
+      const mapped = ATMOSPHERE_MAP[ansStr];
+      if(mapped != null) atmosphereSentence = mapped;
+      return;
+    }
+    if((title.includes('メニュー') || title.includes('料理')) && q.type === 'text'){
+      const val = String(ans).trim();
+      if(val) menuSentence = val + 'が特に美味しくおすすめです。';
+      return;
+    }
+    if(title.includes('良かった') && q.type === 'multi'){
+      const items = Array.isArray(ans) ? ans : [ansStr];
+      goodPointAns = items;
+      if(items.length === 1)      goodPointSentence = items[0] + 'が印象的でした。';
+      else if(items.length === 2) goodPointSentence = items[0] + 'や' + items[1] + 'が良かったです。';
+      else                        goodPointSentence = items[0] + 'や' + items[1] + '、' + items.slice(2).join('・') + 'も満足でした。';
+      return;
+    }
+    if(q.type === 'text'){
+      const val = String(ans).trim();
+      if(val) freeSentence = val.match(/[。！!？?]$/) ? val : val + '。';
+    }
+  });
+
+  const closing = satisfactionHigh ? 'また機会があればぜひ利用したいと思います。' : '';
+
+  let openSentence = '';
+  if(triggerPart && purposePart){
+    openSentence = triggerPart + purposePart;
+  } else if(triggerPart){
+    const end = triggerPart.endsWith('って') ? '入りました。' : '来店しました。';
+    openSentence = triggerPart + end;
+  } else if(purposePart){
+    openSentence = purposePart;
+  }
+
+  const coreParts = [openSentence, atmosphereSentence, menuSentence, goodPointSentence].filter(Boolean);
+  let text = coreParts.join('') + (freeSentence ? freeSentence : '') + closing;
+
+  if(!text.trim()) text = `${STORE}はとても満足できるお店でした。また機会があればぜひ利用したいと思います。`;
+
+  // 200文字超 → 自由記述を省略
+  if(text.length > 200 && freeSentence){
+    text = coreParts.join('') + closing;
+  }
+
+  // まだ200超 → 良かった点を上位3つに絞る
+  if(text.length > 200 && goodPointAns.length > 3){
+    const top3 = goodPointAns.slice(0, 3);
+    const newGood = top3[0] + 'や' + top3[1] + '、' + top3[2] + 'も満足でした。';
+    text = text.replace(goodPointSentence, newGood);
+  }
+
+  // まだ200超 → 文末短縮
+  if(text.length > 200){
+    text = text.replace('また機会があればぜひ利用したいと思います。', 'また来たいです。');
+  }
+
+  // 150未満 → 補足①
+  if(text.length < 150){
+    text = text.replace(/[。！!]$/, '') + '。雰囲気も良くとても居心地が良かったです。ぜひおすすめのお店です。';
+  }
+  // 150未満 → 補足②
+  if(text.length < 150){
+    text = text.replace(/[。！!]$/, '') + 'また機会があればぜひ利用したいと思います。';
+  }
+
+  return text;
+}
+
+function startGen(){
+  collectTextAnswers();
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('on'));
+  document.getElementById('pgw').style.display = 'none';
+  document.getElementById('lcard').classList.add('on');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+  setTimeout(() => showRes(buildReview()), 600);
+}
+
+function showRes(txt){
+  document.getElementById('lcard').classList.remove('on');
+  document.getElementById('gentext').textContent = txt;
+  document.getElementById('charCount').textContent = `${txt.length}文字`;
+  document.getElementById('rcard').classList.add('on');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function regen(){
+  document.getElementById('rcard').classList.remove('on');
+  document.getElementById('lcard').classList.add('on');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+  setTimeout(() => showRes(buildReview()), 600);
+}
+
+function cpReview(){
+  navigator.clipboard.writeText(document.getElementById('gentext').textContent).then(() => {
+    const bcopy = document.getElementById('bcopy');
+    bcopy.textContent = '✅ コピーしました！';
+    toast('コピーしました！Googleの口コミに貼り付けてください');
+    setTimeout(() => bcopy.textContent = '📋 口コミ文をコピーする', 2800);
+  });
+}
+
+function toast(m){
+  const t = document.getElementById('toast');
+  t.textContent = m;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function resetSurvey(){
+  ANS = new Array(TOTAL).fill(null);
+  buildQCards();
+  document.getElementById('pgw').style.display = 'block';
+  document.getElementById('bcopy').textContent = '📋 口コミ文をコピーする';
+  showQ(1);
+}
+
+window.addEventListener('load', resetSurvey);
+window.addEventListener('pageshow', resetSurvey);
+</script>
+</body>
+</html>
