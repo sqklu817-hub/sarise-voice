@@ -138,22 +138,37 @@ const params = new URLSearchParams(location.search);
 const STORE = params.get('store') || params.get('s') || 'お店';
 const GG_URL = params.get('url') || params.get('u') || '';
 
-// cfg パラメータをデコードして質問配列を取得
-const cfgRaw = params.get('cfg');
-let CFG = null;
-try { if(cfgRaw) CFG = JSON.parse(decodeURIComponent(escape(atob(cfgRaw)))); } catch(e){}
+// templateパラメータから質問セットを選択
+const TEMPLATE_QUESTIONS = {
+  food: [
+    {id:'fq1',title:'全体的なご満足度を教えてください',type:'single',options:['最高でした！','良かったです','普通でした','もう少しでした','がっかりでした']},
+    {id:'fq2',title:'今回のご来店のきっかけを教えてください',type:'single',options:['Instagram','TikTok','食べログ','ホットペッパー','ぐるなび','Google検索','知人の紹介','もともと知っていた','通りがかり']},
+    {id:'fq3',title:'今日の来店目的を教えてください',type:'single',options:['ランチ','ディナー','誕生日','記念日・お祝い','デート','接待・会食','友人との食事','家族での食事','一人ご飯']},
+    {id:'fq4',title:'お店の雰囲気はどうでしたか',type:'single',options:['とても良かった','落ち着けた','賑やかで楽しかった','普通だった']},
+    {id:'fq5',title:'特に良かった点を教えてください',type:'multi',options:['料理の美味しさ','接客の良さ','雰囲気','価格の満足度','清潔感']},
+    {id:'fq6',title:'特に良かったメニュー・料理を教えてください',type:'text',options:[]},
+    {id:'fq7',title:'ひとことご感想をお聞かせください',type:'text',options:[]}
+  ],
+  beauty: [
+    {id:'bq1',title:'全体的なご満足度を教えてください',type:'single',options:['最高でした！','良かったです','普通でした','もう少しでした','がっかりでした']},
+    {id:'bq2',title:'今回のご来店のきっかけを教えてください',type:'single',options:['Instagram','TikTok','ホットペッパービューティー','Google検索','知人の紹介','以前から通っている']},
+    {id:'bq3',title:'本日のメニューを教えてください',type:'single',options:['カット','カラー','パーマ','トリートメント','その他']},
+    {id:'bq4',title:'お店の雰囲気はどうでしたか',type:'single',options:['とてもおしゃれだった','落ち着けた','清潔感があった','普通だった']},
+    {id:'bq5',title:'特に良かった点を教えてください',type:'multi',options:['仕上がりの満足度','スタッフの対応','居心地の良さ','価格の満足度','清潔感']},
+    {id:'bq6',title:'ひとことご感想をお聞かせください',type:'text',options:[]}
+  ],
+  seikotsuin: [
+    {id:'sq1',title:'全体的なご満足度を教えてください',type:'single',options:['最高でした！','良かったです','普通でした','もう少しでした','がっかりでした']},
+    {id:'sq2',title:'今回のご来院のきっかけを教えてください',type:'single',options:['Google検索','TikTok','知人の紹介','チラシ','以前から通っている','通りがかり']},
+    {id:'sq3',title:'本日の施術内容を教えてください',type:'single',options:['肩こり','腰痛','膝の痛み','骨盤矯正','スポーツによる怪我','その他']},
+    {id:'sq4',title:'お店の雰囲気はどうでしたか',type:'single',options:['清潔感があった','落ち着けた','スタッフが明るかった','普通だった']},
+    {id:'sq5',title:'特に良かった点を教えてください',type:'multi',options:['施術の効果','スタッフの対応','説明のわかりやすさ','待ち時間の少なさ','清潔感']},
+    {id:'sq6',title:'ひとことご感想をお聞かせください',type:'text',options:[]}
+  ]
+};
 
-const DEFAULT_QUESTIONS = [
-  {id:'dq1',title:'全体的なご満足度を教えてください',type:'single',options:['最高でした！','良かったです','普通でした','もう少しでした','がっかりでした']},
-  {id:'dq2',title:'今回のご来店のきっかけを教えてください',type:'single',options:['Instagram','食べログ','ホットペッパー','ぐるなび','Google検索','お店のHP','知人・友人の紹介','もともと知っていた','通りがかり']},
-  {id:'dq3',title:'今日の来店目的を教えてください',type:'single',options:['ランチ','ディナー','記念日・お祝い','デート','接待・会食','友人との食事','家族での食事','ひとりごはん']},
-  {id:'dq4',title:'料理の満足度を教えてください',type:'single',options:['とても美味しかった','美味しかった','普通だった','少し残念だった']},
-  {id:'dq5',title:'スタッフの対応はいかがでしたか？',type:'single',options:['とても親切だった','丁寧だった','普通だった','少し残念だった']},
-  {id:'dq6',title:'特に良かった料理・メニューはありますか？',type:'text',options:[]},
-  {id:'dq7',title:'ひとことご感想をお聞かせください',type:'text',options:[]}
-];
-
-const QUESTIONS = (CFG?.questions?.length) ? CFG.questions : DEFAULT_QUESTIONS;
+const templateId = params.get('template') || 'food';
+const QUESTIONS = TEMPLATE_QUESTIONS[templateId] || TEMPLATE_QUESTIONS.food;
 const TOTAL = QUESTIONS.length;
 let ANS = new Array(TOTAL).fill(null);
 
