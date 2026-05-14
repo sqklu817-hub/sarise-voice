@@ -6,70 +6,222 @@
   <title>Sarise Voice 管理画面</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
-    :root{--bg:#f6f8fb;--card:#fff;--line:#d8e0ec;--txt:#1f2937;--muted:#6b7280;--pri:#1d4ed8;--ok:#047857;--warn:#b45309}
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif}
-    .wrap{max-width:1200px;margin:0 auto;padding:16px} .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
-    h1{font-size:22px;margin:0 0 8px} h2{font-size:18px;margin:0 0 8px} h3{font-size:15px;margin:8px 0}
-    .muted{color:var(--muted);font-size:12px} .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .tabs button,.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer}
-    .tabs button.on{background:var(--pri);color:#fff;border-color:var(--pri)} .btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
-    .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff} .btn.warn{background:var(--warn);border-color:var(--warn);color:#fff}
-    input,select,textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff}
-    textarea{min-height:80px} .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px} .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-    .hidden{display:none} table{width:100%;border-collapse:collapse;font-size:13px} th,td{border-bottom:1px solid #edf1f7;padding:8px;text-align:left;vertical-align:top;word-break:keep-all;white-space:normal}
-    .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;border:1px solid var(--line)} .pub{background:#ecfdf5;color:#065f46}.draft{background:#fffbeb;color:#92400e}
-    .qItem{border:1px solid #e9eef6;border-radius:10px;padding:10px;margin-bottom:8px;background:#fbfdff} .optItem{display:flex;gap:6px;align-items:center;margin:4px 0}
-    .preview{border:1px dashed #cfd8e3;border-radius:12px;padding:12px;background:#fff} .phone{max-width:390px;margin:0 auto}
-    .status{font-size:12px;color:#374151} .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.kpi .card{margin:0}
-    .chart{display:flex;align-items:flex-end;gap:6px;height:120px;padding:8px;border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
-    .bar{width:18px;background:#60a5fa;border-radius:6px 6px 0 0;max-height:100%}
-    .urlCell{max-width:300px;display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+    :root{
+      --bg:#fafbfc;
+      --card:#ffffff;
+      --line:#e5e7eb;
+      --line-strong:#d1d5db;
+      --txt:#111827;
+      --txt-sub:#4b5563;
+      --muted:#9ca3af;
+      --pri:#0a2540;
+      --pri-hover:#1a365d;
+      --accent:#635bff;
+      --ok:#059669;
+      --warn:#d97706;
+      --danger:#dc2626;
+      --bg-soft:#f3f4f6;
+      --shadow-sm:0 1px 2px 0 rgba(0,0,0,0.04);
+      --shadow-md:0 4px 12px -2px rgba(0,0,0,0.06),0 2px 4px -2px rgba(0,0,0,0.04);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--txt);font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-serif;font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+    .wrap{max-width:1280px;margin:0 auto;padding:24px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow-sm);transition:box-shadow .15s ease,border-color .15s ease}
+    .card:hover{box-shadow:var(--shadow-md);border-color:var(--line-strong)}
+    h1{font-size:24px;font-weight:700;letter-spacing:0;margin:0 0 8px;color:var(--txt);line-height:1.25}
+    h2{font-size:18px;font-weight:600;margin:0 0 10px;color:var(--txt);line-height:1.35}
+    h3{font-size:14px;font-weight:600;color:var(--txt-sub);margin:10px 0 8px;line-height:1.45}
+    .muted{color:var(--muted);font-size:12px;line-height:1.6}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .tabs{gap:8px}
+    .tabs button,.btn{border:1px solid var(--line);background:#fff;color:var(--txt);border-radius:8px;padding:8px 14px;cursor:pointer;font:500 13px/1.4 'Inter','Noto Sans JP',sans-serif;box-shadow:var(--shadow-sm);transition:background-color .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease,transform .08s ease}
+    .tabs button:hover,.btn:hover{background:var(--bg-soft);border-color:var(--line-strong)}
+    .tabs button:active,.btn:active{transform:translateY(1px)}
+    .tabs button.on{background:var(--pri);color:#fff;border-color:var(--pri);box-shadow:var(--shadow-sm)}
+    .btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+    .btn.pri:hover{background:var(--pri-hover);border-color:var(--pri-hover)}
+    .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+    .btn.ok:hover{background:#047857;border-color:#047857}
+    .btn.warn{background:var(--warn);border-color:var(--warn);color:#fff}
+    .btn.warn:hover{background:#b45309;border-color:#b45309}
+    input,select,textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 12px;background:#fff;color:var(--txt);font:400 14px/1.45 'Inter','Noto Sans JP',sans-serif;transition:border-color .15s ease,box-shadow .15s ease,background-color .15s ease}
+    input::placeholder,textarea::placeholder{color:var(--muted)}
+    input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,91,255,.1);outline:none}
+    input:disabled,select:disabled,textarea:disabled{background:#f9fafb;color:var(--muted);cursor:not-allowed}
+    input[type="checkbox"]{accent-color:var(--accent)}
+    textarea{min-height:88px;resize:vertical}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+    .hidden{display:none}
+    table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+    th{background:var(--bg-soft);color:var(--txt-sub);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em;padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;word-break:keep-all;white-space:normal}
+    td{padding:12px;border-bottom:1px solid #f3f4f6;color:var(--txt);text-align:left;vertical-align:top;word-break:keep-all;white-space:normal}
+    tr:hover td{background:#fafbfc}
+    .tag{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:500;border:1px solid var(--line);line-height:1.5}
+    .pub{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
+    .draft{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+    .qItem{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:#fbfdff;box-shadow:var(--shadow-sm)}
+    .optItem{display:flex;gap:8px;align-items:center;margin:6px 0}
+    .preview{border:1px dashed var(--line-strong);border-radius:10px;padding:14px;background:#fff;box-shadow:var(--shadow-sm)}
+    .phone{max-width:390px;margin:0 auto}
+    .status{font-size:12px;color:var(--txt-sub)}
+    .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    .kpi .card{margin:0}
+    .chart{display:flex;align-items:flex-end;gap:6px;height:120px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden;box-shadow:var(--shadow-sm)}
+    .bar,.rank-bar{width:18px;max-height:100%;background:linear-gradient(180deg,#818cf8 0%,#635bff 100%);border-radius:6px 6px 0 0;box-shadow:0 -2px 4px rgba(99,91,255,.2)}
+    .urlCell{max-width:300px;display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;color:var(--txt-sub)}
     .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .toolbar .count{padding:4px 8px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:12px}
-    .statusGrid{display:grid;grid-template-columns:repeat(5,minmax(80px,1fr));gap:4px}
-    .statusItem{font-size:11px;padding:2px 6px;border:1px solid var(--line);border-radius:999px;background:#f9fafb;display:inline-block}
+    .toolbar .count{padding:4px 10px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:12px;font-weight:500;border:1px solid #c7d2fe}
+    .statusGrid{display:grid;grid-template-columns:repeat(3,minmax(90px,1fr));gap:6px}
+    .statusItem{font-size:11px;font-weight:500;padding:3px 8px;border:1px solid var(--line);border-radius:999px;background:#f9fafb;color:var(--txt-sub);display:inline-block}
     .statusItem.ok{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
-    .statusItem.warn{background:#fff7ed;color:#9a3412;border-color:#fed7aa}
-    .panel{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fcfdff}
+    .statusItem.warn{background:#fef3c7;color:#92400e;border-color:#fde68a}
+    .panel,.helpFlow{border:1px solid var(--line);border-radius:10px;padding:14px;background:linear-gradient(135deg,#f9fafb 0%,#f3f4f6 100%);box-shadow:var(--shadow-sm)}
     .helpFlow button{min-width:170px}
-    .modalBack{position:fixed;inset:0;background:rgba(17,24,39,.45);display:none;align-items:center;justify-content:center;z-index:20}
-    .modal{max-width:560px;width:94%;background:#fff;border-radius:12px;border:1px solid var(--line);padding:14px}
+    .modalBack{position:fixed;inset:0;background:rgba(17,24,39,.5);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:20}
+    .modal{max-width:560px;width:94%;background:#fff;border-radius:14px;border:1px solid var(--line);padding:16px;box-shadow:0 20px 50px -10px rgba(0,0,0,.25)}
     .modal ul{margin:6px 0 0 18px;padding:0}
-    .err{font-size:12px;color:#b91c1c}
+    .err{font-size:12px;color:var(--danger);font-weight:500}
     .okText{color:#166534}
     .opsCell{display:flex;gap:6px;flex-wrap:wrap;min-width:240px}
     .opsCell .btn{min-width:72px}
-    .storeName{min-width:120px;font-weight:600}
-    .statusGrid{grid-template-columns:repeat(3,minmax(90px,1fr))}
+    .storeName{min-width:120px;font-weight:600;color:var(--txt)}
+    .storeName.clickable{cursor:pointer;transition:color .15s ease,text-decoration-color .15s ease;text-decoration:underline;text-decoration-color:transparent;text-underline-offset:3px}
+    .storeName.clickable:hover{color:var(--accent);text-decoration-color:var(--accent)}
+    .link-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px;background:#fff;transition:border-color .15s ease,box-shadow .15s ease}
+    .link-item:hover{border-color:var(--line-strong);box-shadow:var(--shadow-sm)}
+    .link-clickable{display:flex;align-items:center;gap:12px;flex:1;min-width:0;cursor:pointer;padding:4px 8px;border-radius:6px;transition:background .12s ease}
+    .link-clickable:hover{background:var(--bg-soft)}
+    .link-icon{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:#fff;flex-shrink:0;letter-spacing:.02em}
+    .link-icon[data-type="googlemap"]{background:#4285f4}
+    .link-icon[data-type="hp"]{background:#6366f1}
+    .link-icon[data-type="instagram"]{background:linear-gradient(135deg,#f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%)}
+    .link-icon[data-type="tabelog"]{background:#d4a574}
+    .link-icon[data-type="line"]{background:#06c755}
+    .link-icon[data-type="hotpepper"]{background:#e60012}
+    .link-icon[data-type="custom"]{background:#6b7280}
+    .link-type-label{font-size:14px;font-weight:500;color:var(--txt)}
+    .link-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
+    .link-copy-btn{padding:6px 12px;font-size:12px}
+    .link-delete-btn{width:28px;height:28px;border:none;background:transparent;color:var(--muted);font-size:18px;line-height:1;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s ease,color .12s ease}
+    .link-delete-btn:hover{background:#fef2f2;color:var(--danger)}
+    .toast{position:fixed;right:20px;bottom:20px;background:var(--pri);color:#fff;border-radius:8px;padding:10px 14px;box-shadow:var(--shadow-md);font-size:13px;font-weight:500;z-index:40}
+
+    /* GBPチェックシート */
+    .gbp-summary{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;list-style:none}
+    .gbp-summary::-webkit-details-marker{display:none}
+    .gbp-summary-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .gbp-summary-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .gbp-progress-wrap{height:8px;background:var(--line);border-radius:999px;overflow:hidden;margin-top:10px}
+    .gbp-progress-bar{height:100%;border-radius:999px;transition:width .25s ease,background-color .25s ease}
+    .gbp-progress-bar.low{background:#ef4444}
+    .gbp-progress-bar.mid{background:#f59e0b}
+    .gbp-progress-bar.high{background:#10b981}
+    .gbp-filter-chips{display:flex;gap:6px;flex-wrap:wrap}
+    .gbp-filter-chips .chip{padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--txt-sub);font-size:12px;font-weight:500;cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease}
+    .gbp-filter-chips .chip:hover{background:var(--bg-soft);border-color:var(--line-strong)}
+    .gbp-filter-chips .chip.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+    .gbp-cat-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+    .gbp-cat-tabs .cat-tab{padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--txt-sub);font-size:12px;font-weight:500;cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease}
+    .gbp-cat-tabs .cat-tab:hover{background:var(--bg-soft);border-color:var(--line-strong)}
+    .gbp-cat-tabs .cat-tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .gbp-item{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:8px;background:#fff}
+    .gbp-item-row{display:flex;gap:10px;align-items:flex-start}
+    .gbp-item-check{padding-top:3px;flex-shrink:0}
+    .gbp-item-check input[type="checkbox"]{width:18px;height:18px;cursor:pointer}
+    .gbp-item-main{flex:1;min-width:0}
+    .gbp-item-title{font-weight:600;font-size:13px;color:var(--txt);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .gbp-item-desc{font-size:12px;color:var(--txt-sub);margin-top:3px;line-height:1.5}
+    .gbp-item-eval{width:80px;flex-shrink:0}
+    .gbp-item-eval select{padding:6px 8px;font-size:12px}
+    .gbp-priority{display:inline-block;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:600;line-height:1.5}
+    .gbp-priority.must{background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}
+    .gbp-priority.rec{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+    .gbp-priority.adv{background:#d1fae5;color:#065f46;border:1px solid #a7f3d0}
+    .gbp-note-toggle{font-size:11px;color:var(--accent);cursor:pointer;margin-top:6px;display:inline-block;user-select:none}
+    .gbp-note-toggle:hover{text-decoration:underline}
+    .gbp-note-area{margin-top:6px;display:none}
+    .gbp-note-area.show{display:block}
+    .gbp-note-area textarea{min-height:60px;font-size:12px}
+    .gbp-rate-text{font-size:12px;color:var(--txt-sub);font-weight:500}
+    .gbp-rate-text strong{color:var(--txt);font-feature-settings:"tnum"}
+    .dash-gbp-cell{min-width:160px}
+    .dash-gbp-bar-wrap{height:6px;background:var(--line);border-radius:999px;overflow:hidden;margin-top:4px}
+    .dash-gbp-bar{height:100%;border-radius:999px}
+    .dash-gbp-bar.low{background:#ef4444}
+    .dash-gbp-bar.mid{background:#f59e0b}
+    .dash-gbp-bar.high{background:#10b981}
 
     /* ダッシュボード */
-    .dash-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+    .dash-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
     .dash-kpi .card{margin:0;text-align:center}
-    .dash-kpi .kpi-num{font-size:28px;font-weight:700;color:var(--pri)}
-    .dash-kpi .kpi-label{font-size:12px;color:var(--muted);margin-top:4px}
+    .dash-kpi .kpi-num{font-size:32px;font-weight:700;color:var(--pri);font-feature-settings:"tnum","cv11","ss01";line-height:1.1}
+    .dash-kpi .kpi-label{font-size:11px;font-weight:600;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.05em}
 
     /* スコア表示 */
-    .score-circle{width:100px;height:100px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:28px;font-weight:700;border:4px solid var(--pri);color:var(--pri);margin:12px auto}
-    .score-grade{font-size:13px;font-weight:400}
+    .score-circle{width:108px;height:108px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:32px;font-weight:700;border:5px solid var(--pri);color:var(--pri);margin:14px auto;box-shadow:var(--shadow-md);background:#fff;font-feature-settings:"tnum","cv11","ss01"}
+    .score-grade{font-size:13px;font-weight:500}
     .grade-A{border-color:#047857;color:#047857}
     .grade-B{border-color:#1d4ed8;color:#1d4ed8}
     .grade-C{border-color:#b45309;color:#b45309}
     .grade-D{border-color:#b91c1c;color:#b91c1c}
 
     /* 順位グラフ */
-    .rank-bar{background:#818cf8;border-radius:6px 6px 0 0;width:18px;max-height:100%}
+    .rank-bar{width:18px}
 
     /* レポートプレビュー */
-    .report-preview{border:2px solid var(--line);border-radius:12px;padding:20px;background:#fff;font-family:'Noto Sans JP',sans-serif;line-height:1.8}
+    .report-preview{border:1px solid var(--line);border-radius:10px;padding:22px;background:#fff;font-family:'Inter','Noto Sans JP',sans-serif;line-height:1.8;box-shadow:var(--shadow-md)}
     .report-preview h3{border-bottom:2px solid var(--pri);padding-bottom:6px;color:var(--pri)}
     .up{color:#047857;font-weight:700}
     .down{color:#b91c1c;font-weight:700}
     .same{color:var(--muted)}
 
+    .app-layout{display:flex;min-height:100vh}
+    .sidebar{width:240px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;flex-shrink:0}
+    .main-content{flex:1;min-width:0;background:var(--bg)}
+    .topbar{background:#fff;border-bottom:1px solid var(--line);padding:20px 28px;position:sticky;top:0;z-index:10}
+    .topbar h1{margin:0 0 4px;font-size:20px}
+    .topbar .muted{font-size:12px}
+    .main-content .wrap{padding:24px 28px;max-width:none}
+    .sidebar-brand{display:flex;align-items:center;gap:10px;padding:18px 16px;border-bottom:1px solid var(--line)}
+    .brand-logo{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--pri) 0%,var(--accent) 100%);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;letter-spacing:.02em;box-shadow:0 2px 8px rgba(99,91,255,.2)}
+    .brand-name{font-weight:600;font-size:14px;color:var(--txt);letter-spacing:0}
+    .sidebar-nav{flex:1;padding:12px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+    .sidebar-nav button{width:100%;text-align:left;background:transparent;border:none;color:var(--txt-sub);padding:9px 12px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;transition:background .12s ease,color .12s ease;box-shadow:none;font-family:inherit}
+    .sidebar-nav button:hover{background:var(--bg-soft);color:var(--txt);border:none}
+    .sidebar-nav button.on{background:var(--pri);color:#fff;box-shadow:0 1px 2px rgba(10,37,64,.1)}
+    .sidebar-nav button.on:hover{background:var(--pri-hover);border:none}
+    .sidebar-nav button:active{transform:none}
+    .sidebar-footer{padding:14px 16px;border-top:1px solid var(--line);background:#fafbfc}
+    .sidebar-footer select{width:100%;font-size:12px;padding:6px 10px}
+    .tabs.row.card{display:none !important}
+
+    @media screen and (max-width:760px){
+      .wrap{padding:16px}
+      .grid2,.grid3,.kpi,.dash-kpi{grid-template-columns:1fr}
+      .tabs button,.btn{padding:8px 12px}
+      table{font-size:12px}
+      th,td{padding:9px}
+    }
+
+    @media (max-width:768px){
+      .app-layout{flex-direction:column}
+      .sidebar{width:100%;height:auto;position:static;flex-direction:row;overflow-x:auto}
+      .sidebar-brand{border-right:1px solid var(--line);border-bottom:none;flex-shrink:0}
+      .sidebar-nav{flex-direction:row;flex:1;overflow-x:auto}
+      .sidebar-nav button{flex-shrink:0;white-space:nowrap}
+      .sidebar-footer{display:none}
+    }
+
     /* 印刷用 */
     @media print {
       .tabs,nav,.toolbar,.helpFlow,button:not(.printKeep),
       select:not(.printKeep),#roleSel,.modalBack{display:none !important}
+      .sidebar,.topbar{display:none !important}
+      .main-content .wrap{padding:0}
       section:not(.printTarget){display:none !important}
       .printTarget{display:block !important}
       .report-preview,.diagnosis-result{page-break-inside:avoid}
@@ -77,6 +229,13 @@
       /* 診断：入力フォームを隠して結果のみ印刷 */
       #tab-diagnosis.printTarget > .card:not(.diagnosis-result){display:none !important}
       #tab-diagnosis.printTarget .diagnosis-result{display:block !important}
+      body.printDiagnosisMode .wrap > .card:not(.diagnosis-result),
+      body.printDiagnosisMode section:not(#tab-diagnosis),
+      body.printDiagnosisMode #tab-diagnosis > .card:not(.diagnosis-result){display:none !important}
+      body.printDiagnosisMode #tab-diagnosis,
+      body.printDiagnosisMode #diagResult{display:block !important}
+      body.printDiagnosisMode .wrap{max-width:none;padding:0}
+      body.printDiagnosisMode #diagResult{border:0;margin:0;padding:0}
       /* 月次：入力フォームを隠してレポートのみ印刷 */
       #tab-monthly.printTarget > .card{display:none !important}
       #tab-monthly.printTarget #reportPreview{display:block !important}
@@ -84,28 +243,35 @@
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card row" style="justify-content:space-between">
-    <div>
-      <h1>Sarise Voice 管理画面</h1>
-      <div class="muted">一覧 → 編集 → プレビュー → QR生成 を1画面で運用</div>
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">SV</div>
+      <div class="brand-name">Sarise Voice</div>
     </div>
-    <div class="row">
-      <label class="muted" style="width:auto">権限</label>
-      <select id="roleSel" style="width:130px"><option>管理者</option><option>編集者</option><option>閲覧者</option></select>
+    <nav class="sidebar-nav tabs">
+      <button data-tab="stores" class="on">店舗一覧</button>
+      <button data-tab="editor">店舗編集</button>
+      <button data-tab="templates">テンプレート</button>
+      <button data-tab="analytics">分析</button>
+      <button data-tab="dashboard">ダッシュボード</button>
+      <button data-tab="diagnosis">無料診断</button>
+      <button data-tab="ranking">順位トラッキング</button>
+      <button data-tab="monthly">月次レポート</button>
+    </nav>
+    <div class="sidebar-footer">
+      <label class="muted" style="display:block;font-size:11px;margin-bottom:4px">権限</label>
+      <select id="roleSel"><option>管理者</option><option>編集者</option><option>閲覧者</option></select>
     </div>
-  </div>
-
-  <div class="card tabs row">
-    <button data-tab="stores" class="on">店舗一覧</button>
-    <button data-tab="editor">店舗編集</button>
-    <button data-tab="templates">テンプレート</button>
-    <button data-tab="analytics">分析</button>
-    <button data-tab="dashboard">ダッシュボード</button>
-    <button data-tab="diagnosis">無料診断</button>
-    <button data-tab="ranking">順位トラッキング</button>
-    <button data-tab="monthly">月次レポート</button>
-  </div>
+  </aside>
+  <main class="main-content">
+    <header class="topbar">
+      <div>
+        <h1>Sarise Voice 管理画面</h1>
+        <div class="muted">一覧 → 編集 → プレビュー → QR生成 を1画面で運用</div>
+      </div>
+    </header>
+    <div class="wrap">
 
   <section id="tab-stores">
     <div class="card">
@@ -171,6 +337,87 @@
         </div>
 
         <div class="card">
+          <h2>外部リンク</h2>
+          <div class="muted" style="margin-bottom:10px">この店舗の各種SNS・ポータルサイトのリンクを登録できます</div>
+          <div class="row" style="gap:8px;align-items:flex-start;margin-bottom:14px">
+            <select id="newLinkType" style="max-width:160px">
+              <option value="googlemap">Googleマップ</option>
+              <option value="hp">公式HP</option>
+              <option value="instagram">Instagram</option>
+              <option value="tabelog">食べログ</option>
+              <option value="line">公式LINE</option>
+              <option value="hotpepper">ホットペッパー</option>
+              <option value="custom">その他（自由入力）</option>
+            </select>
+            <input id="newLinkLabel" placeholder="ラベル（その他選択時のみ）" style="max-width:200px;display:none" />
+            <input id="newLinkUrl" placeholder="https://..." style="flex:1;min-width:200px" />
+            <button class="btn pri" id="addLinkBtn">追加</button>
+          </div>
+          <div id="linkList"></div>
+        </div>
+
+        <div class="card">
+          <details id="hearingDetails">
+            <summary class="row" style="justify-content:space-between;gap:10px;cursor:pointer">
+              <div class="row" style="gap:10px">
+                <h2 style="margin:0">ヒアリングメモ</h2>
+                <span class="tag" id="hearingStatus">未入力</span>
+                <span class="muted" id="hearingSavedAt"></span>
+              </div>
+              <div class="row" style="gap:6px">
+                <button class="btn" id="copyHearingBtn" onclick="event.stopPropagation();copyHearingMemo(event)">メモをコピー</button>
+                <button class="btn warn" id="clearHearingBtn" onclick="event.stopPropagation();clearHearingMemo(event)">クリア</button>
+              </div>
+            </summary>
+            <div style="margin-top:14px">
+              <div class="grid2">
+                <div><label class="muted">MTG日時</label><input id="hearingMtgDate" class="hearingInput" data-hearing-field="mtgDate" type="datetime-local" /></div>
+                <div><label class="muted">参加者</label><input id="hearingAttendees" class="hearingInput" data-hearing-field="attendees" placeholder="例：先方2名 / 自社1名" /></div>
+              </div>
+              <div class="grid2" style="margin-top:12px">
+                <div><label class="muted">1. ホットペッパーの月額料金</label><textarea class="hearingInput" data-hearing-field="q1"></textarea></div>
+                <div><label class="muted">2. その他の広告費</label><textarea class="hearingInput" data-hearing-field="q2"></textarea></div>
+                <div><label class="muted">3. 月の来客数</label><textarea class="hearingInput" data-hearing-field="q3"></textarea></div>
+                <div><label class="muted">4. 月の新規客数</label><textarea class="hearingInput" data-hearing-field="q4"></textarea></div>
+                <div><label class="muted">5. 平均客単価</label><textarea class="hearingInput" data-hearing-field="q5"></textarea></div>
+                <div><label class="muted">6. 新規客の流入経路と割合</label><textarea class="hearingInput" data-hearing-field="q6"></textarea></div>
+                <div><label class="muted">7. 1日の施術可能枠と空き状況</label><textarea class="hearingInput" data-hearing-field="q7"></textarea></div>
+                <div><label class="muted">8. メインの客層と集客したい施術</label><textarea class="hearingInput" data-hearing-field="q8"></textarea></div>
+                <div><label class="muted">9. GBP権限と写真素材の有無</label><textarea class="hearingInput" data-hearing-field="q9"></textarea></div>
+                <div><label class="muted">10. 3ヶ月で達成したい目標</label><textarea class="hearingInput" data-hearing-field="q10"></textarea></div>
+                <div><label class="muted">11. 気になってる競合・参考店舗</label><textarea id="h11" class="hearingInput" data-hearing-field="q11" placeholder="参考にしたい店・ベンチマーク・気になる近隣店など"></textarea></div>
+                <div><label class="muted">12. 過去に試した集客施策</label><textarea id="h12" class="hearingInput" data-hearing-field="q12" placeholder="チラシ／SNS広告／他業者経験／うまくいかなかったことなど"></textarea></div>
+              </div>
+              <div style="margin-top:12px"><label class="muted">自由記述（その他メモ）</label><textarea class="hearingInput" data-hearing-field="free"></textarea></div>
+            </div>
+          </details>
+        </div>
+
+        <div class="card">
+          <details id="gbpCheckDetails">
+            <summary class="gbp-summary">
+              <div class="gbp-summary-left">
+                <h2 style="margin:0">GBPチェックシート</h2>
+                <span class="gbp-rate-text" id="gbpRateText">全体達成率: 0/0（0%）</span>
+                <span class="muted" id="gbpUpdatedAt"></span>
+              </div>
+              <div class="gbp-summary-right">
+                <div class="gbp-filter-chips" id="gbpFilterChips">
+                  <span class="chip on" data-filter="all" onclick="event.stopPropagation();setGbpFilter('all')">全て</span>
+                  <span class="chip" data-filter="必須" onclick="event.stopPropagation();setGbpFilter('必須')">必須</span>
+                  <span class="chip" data-filter="推奨" onclick="event.stopPropagation();setGbpFilter('推奨')">推奨</span>
+                  <span class="chip" data-filter="発展" onclick="event.stopPropagation();setGbpFilter('発展')">発展</span>
+                </div>
+                <button class="btn" id="copyGbpBtn" onclick="event.stopPropagation();copyGbpCheck(event)">コピー</button>
+              </div>
+            </summary>
+            <div class="gbp-progress-wrap"><div class="gbp-progress-bar" id="gbpProgressBar" style="width:0%"></div></div>
+            <div class="gbp-cat-tabs" id="gbpCatTabs"></div>
+            <div id="gbpItemList"></div>
+          </details>
+        </div>
+
+        <div class="card">
           <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px"><h2 style="margin:0">質問編集</h2><div class="row" style="gap:8px;flex-wrap:wrap"><select id="questionTemplateSelect" class="input" style="min-width:160px"><option value="">テンプレートを選択</option><option value="restaurant">飲食店向け</option><option value="salon">美容室向け</option><option value="clinic">整骨院向け</option></select><button class="btn btn-secondary" id="applyQuestionTemplateBtn">質問に適用する</button><button class="btn" id="addQuestionBtn">質問を追加</button></div></div>
           <div id="questionList"></div>
         </div>
@@ -211,7 +458,7 @@
 
   <section id="tab-analytics" class="hidden">
     <div class="card">
-      <h2>分析ダッシュボード（ダミー）</h2>
+      <h2>分析ダッシュボード</h2>
       <div class="row">
         <select id="analyticsStore" style="max-width:280px"></select>
         <select id="analyticsRange" style="max-width:160px">
@@ -244,6 +491,24 @@
           </tr>
         </thead>
         <tbody id="dashStoreTable"></tbody>
+      </table>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <h2 style="margin:0">GBPチェック達成率</h2>
+        <div class="row" style="gap:6px">
+          <label class="muted" style="font-size:12px;width:auto">並び替え:</label>
+          <select id="dashGbpSort" style="max-width:160px;font-size:12px;padding:6px 10px">
+            <option value="rateDesc">達成率(高い順)</option>
+            <option value="rateAsc">達成率(低い順)</option>
+            <option value="name">店舗名</option>
+            <option value="updated">最終更新(新しい順)</option>
+          </select>
+        </div>
+      </div>
+      <table style="margin-top:8px">
+        <thead><tr><th>店舗名</th><th class="dash-gbp-cell">全体達成率</th><th>必須項目</th><th>最終更新</th></tr></thead>
+        <tbody id="dashGbpTable"></tbody>
       </table>
     </div>
     <div class="card" style="margin-top:12px">
@@ -282,7 +547,17 @@
           </select>
         </div>
         <div><label class="muted">競合店舗の平均口コミ数</label><input id="diagCompetitorAvg" type="number" min="0" placeholder="例：40" /></div>
-        <div><label class="muted">現在の検索順位（目標キーワード）</label><input id="diagCurrentRank" type="number" min="1" max="100" placeholder="例：8" /></div>
+        <div>
+          <label class="muted">Googleマップ検索順位</label>
+          <input id="diagCurrentRank" type="hidden" value="" />
+          <div class="row" style="gap:8px;align-items:center">
+            <label class="muted row" style="width:auto;gap:6px;margin:0">
+              <input id="diagRankOutside" type="checkbox" style="width:auto" onchange="syncDiagnosisRankInput()" />
+              ランキング外
+            </label>
+            <input id="diagCurrentRankNumber" type="number" min="1" max="100" step="1" placeholder="1〜100の順位を入力" oninput="syncDiagnosisRankInput()" />
+          </div>
+        </div>
       </div>
       <div class="row" style="margin-top:12px">
         <button class="btn pri" onclick="runDiagnosis()">診断する</button>
@@ -354,6 +629,8 @@
     </div>
   </section>
 </div>
+  </main>
+</div>
 
 <div id="confirmModalBack" class="modalBack">
   <div class="modal">
@@ -374,7 +651,96 @@ const enc = obj => btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
 const dec = str => JSON.parse(decodeURIComponent(escape(atob(str))));
 const $ = s => document.querySelector(s);
 const DEFAULT_BASE_URL = 'https://sqklu817-hub.github.io/sarise-voice/';
+const LINK_TYPE_LABELS = {
+  googlemap: 'Googleマップ',
+  hp: '公式HP',
+  instagram: 'Instagram',
+  tabelog: '食べログ',
+  line: '公式LINE',
+  hotpepper: 'ホットペッパー',
+  custom: ''
+};
+const HEARING_QUESTIONS = [
+  ['q1','ホットペッパーの月額料金'],
+  ['q2','その他の広告費'],
+  ['q3','月の来客数'],
+  ['q4','月の新規客数'],
+  ['q5','平均客単価'],
+  ['q6','新規客の流入経路と割合'],
+  ['q7','1日の施術可能枠と空き状況'],
+  ['q8','メインの客層と集客したい施術'],
+  ['q9','GBP権限と写真素材の有無'],
+  ['q10','3ヶ月で達成したい目標'],
+  ['q11','気になってる競合・参考店舗'],
+  ['q12','過去に試した集客施策']
+];
 const AUTHORS = ['未選択','管理者','店長','副店長','スタッフA','スタッフB'];
+
+const GBP_CHECK_ITEMS = [
+  { id: 1, category: "GBP基本", title: "登録・オーナー確認", desc: "Googleビジネスプロフィールの登録とオーナー確認が完了しているか", priority: "必須" },
+  { id: 2, category: "GBP基本", title: "掲載対象の確認", desc: "対象事業がGBPの掲載対象で、実態のある事業として登録されているか", priority: "必須" },
+  { id: 3, category: "GBP基本", title: "重複プロフィール", desc: "重複プロフィールがなく、1店舗1プロフィールで整理されているか", priority: "必須" },
+  { id: 4, category: "GBP基本", title: "店名の正確性", desc: "ガイドライン違反をせず、看板・Webサイトと同じ正式名称で登録されているか", priority: "必須" },
+  { id: 5, category: "GBP基本", title: "メインカテゴリ", desc: "メインカテゴリが実態に最も近い業種になっているか", priority: "必須" },
+  { id: 6, category: "GBP基本", title: "追加カテゴリ", desc: "追加カテゴリは実際に提供している業態のみ設定しているか", priority: "必須" },
+  { id: 7, category: "GBP基本", title: "住所・ピン位置", desc: "住所、階数、建物名、ピン位置が正確で来店者が迷わないか", priority: "必須" },
+  { id: 8, category: "GBP基本", title: "電話番号", desc: "主電話番号が正しく、つながる番号になっているか", priority: "必須" },
+  { id: 9, category: "GBP基本", title: "WebサイトURL", desc: "公式サイトまたは正しいLPが設定されているか", priority: "必須" },
+  { id: 10, category: "GBP基本", title: "営業時間", desc: "通常営業時間が設定されており、最新状態になっているか", priority: "必須" },
+  { id: 11, category: "GBP基本", title: "特別営業時間", desc: "祝日・臨時休業・年末年始などの特別営業時間を事前反映しているか", priority: "推奨" },
+  { id: 12, category: "GBP基本", title: "サービス提供エリア", desc: "来店型/訪問型に合わせて住所公開・サービスエリア設定が適切か", priority: "必須" },
+  { id: 13, category: "GBP基本", title: "ビジネス説明文", desc: "何屋か・強み・対象客が伝わる説明文になっているか(誇大表現なし)", priority: "必須" },
+  { id: 14, category: "GBP基本", title: "商品・サービス・メニュー", desc: "商品/サービス/メニューが主要なものから登録されているか", priority: "必須" },
+  { id: 15, category: "GBP基本", title: "商品・サービス数", desc: "商品・サービス・メニューが最低5件以上登録されているか", priority: "推奨" },
+  { id: 16, category: "GBP基本", title: "価格表示", desc: "各商品・サービスに価格が登録されているか", priority: "推奨" },
+  { id: 17, category: "GBP基本", title: "製品(プロダクト)登録", desc: "「商品」セクションで主要メニューを画像付きで登録しているか", priority: "推奨" },
+  { id: 18, category: "GBP基本", title: "属性設定", desc: "予約可、駐車場、支払い方法など事実ベースの属性が埋まっているか", priority: "必須" },
+  { id: 19, category: "GBP基本", title: "Q&A設定", desc: "よくある質問と回答が整備され、来店前の不安を減らせているか", priority: "発展" },
+  { id: 20, category: "GBP基本", title: "予約・注文導線", desc: "予約リンク、注文リンク、問い合わせ導線が設定されているか", priority: "必須" },
+  { id: 21, category: "GBP基本", title: "SNSリンク", desc: "使える場合はInstagram/YouTube等の導線を設定しているか", priority: "推奨" },
+  { id: 22, category: "GBP基本", title: "モバイル対応", desc: "リンク先サイトがスマホで見やすく、フォームも使いやすいか", priority: "推奨" },
+  { id: 23, category: "写真・動画", title: "表示速度", desc: "リンク先サイトのスマホ表示が遅すぎないか", priority: "発展" },
+  { id: 24, category: "写真・動画", title: "外観写真", desc: "建物外観・入口が分かる写真があるか", priority: "必須" },
+  { id: 25, category: "写真・動画", title: "内観写真", desc: "店内や受付、席数、雰囲気が分かる写真があるか", priority: "必須" },
+  { id: 26, category: "写真・動画", title: "スタッフ写真", desc: "スタッフや施術者の写真があり、安心感が出ているか", priority: "必須" },
+  { id: 27, category: "写真・動画", title: "商品・施術写真", desc: "商品・料理・施術・サービス風景の写真があるか", priority: "必須" },
+  { id: 28, category: "写真・動画", title: "写真品質", desc: "暗すぎず、ブレが少なく、実態に近い写真を使っているか", priority: "推奨" },
+  { id: 29, category: "写真・動画", title: "写真枚数", desc: "写真が30枚以上あり、種類が偏っていないか", priority: "推奨" },
+  { id: 30, category: "写真・動画", title: "最新写真", desc: "最後の写真投稿が1ヶ月以内で、最近の店の状態を反映しているか", priority: "推奨" },
+  { id: 31, category: "写真・動画", title: "顧客投稿の監視", desc: "ユーザー投稿写真も確認し、不適切なものは対応できる状態か", priority: "発展" },
+  { id: 32, category: "口コミ", title: "レビュー数", desc: "レビューが30件以上あるか(業種・地域競合も考慮)", priority: "推奨" },
+  { id: 33, category: "口コミ", title: "平均評価", desc: "平均評価が3.7以上を維持できているか", priority: "必須" },
+  { id: 34, category: "口コミ", title: "依頼導線", desc: "会計後や来店後にレビューをお願いする導線があるか", priority: "必須" },
+  { id: 35, category: "口コミ", title: "依頼方法の適正", desc: "見返り提供や選別依頼をせず、規約違反の集め方になっていないか", priority: "必須" },
+  { id: 36, category: "口コミ", title: "キーワード含有", desc: "自然な口コミの中にサービス名・強み・来店目的が含まれているか", priority: "推奨" },
+  { id: 37, category: "口コミ", title: "返信率", desc: "できるだけ全件に返信しているか", priority: "必須" },
+  { id: 38, category: "口コミ", title: "返信品質", desc: "返信が短く丁寧で、感情的でなく、店舗名や内容に触れているか", priority: "推奨" },
+  { id: 39, category: "口コミ", title: "低評価対応", desc: "低評価時の謝意・事実確認・再来店導線の型があるか", priority: "推奨" },
+  { id: 40, category: "口コミ", title: "違反レビュー対応", desc: "ポリシー違反レビューの通報フローを把握しているか", priority: "発展" },
+  { id: 41, category: "投稿", title: "投稿頻度", desc: "週1回以上を目安に継続投稿できているか", priority: "必須" },
+  { id: 42, category: "投稿", title: "定期投稿の継続率", desc: "過去30日間で投稿が途切れていないか", priority: "推奨" },
+  { id: 43, category: "投稿", title: "投稿テーマ", desc: "営業案内、季節情報、新商品、イベント等の来店判断に効く内容か", priority: "推奨" },
+  { id: 44, category: "投稿", title: "投稿文キーワード", desc: "投稿文内に業種・地域・サービスの主要キーワードが自然に入っているか", priority: "推奨" },
+  { id: 45, category: "投稿", title: "ビジュアル同梱", desc: "投稿に画像を付けて視認性を上げているか", priority: "必須" },
+  { id: 46, category: "投稿", title: "営業情報の更新", desc: "営業情報の更新が継続的に行われているか", priority: "必須" },
+  { id: 47, category: "運用管理", title: "インサイト確認", desc: "表示回数、電話、経路検索、Webサイトクリックを定期確認しているか", priority: "必須" },
+  { id: 48, category: "運用管理", title: "指名検索の有無", desc: "店舗名で検索された時に1位表示されているか", priority: "必須" },
+  { id: 49, category: "運用管理", title: "ローカルパック表示", desc: "主要キーワードでGoogle検索したとき、地図3件枠に入っているか", priority: "推奨" },
+  { id: 50, category: "運用管理", title: "競合比較", desc: "主要競合のカテゴリ・写真・口コミ数・投稿状況を見比べているか", priority: "発展" },
+  { id: 51, category: "運用管理", title: "優先順位づけ", desc: "弱点(カテゴリ、写真、口コミ、投稿)を特定して改善順を決めているか", priority: "推奨" },
+  { id: 52, category: "運用管理", title: "権限管理", desc: "主オーナー/管理者権限が整理され、退職者・業者任せになっていないか", priority: "必須" },
+  { id: 53, category: "NGチェック", title: "店名盛り込み", desc: "店名欄に地域名・業種名・症状名などを不自然に追記していないか", priority: "必須" },
+  { id: 54, category: "NGチェック", title: "虚偽情報", desc: "営業時間、住所、電話、サービス内容に誤りや誇張がないか", priority: "必須" },
+  { id: 55, category: "NGチェック", title: "架空拠点", desc: "実態のない住所・バーチャルオフィス・私書箱で登録していないか", priority: "必須" },
+  { id: 56, category: "NGチェック", title: "重複量産", desc: "同一事業で複数プロフィールを量産していないか", priority: "必須" },
+  { id: 57, category: "NGチェック", title: "順位保証訴求", desc: "「上位表示保証」のような表現を案内していないか", priority: "必須" }
+];
+const GBP_CATEGORIES = ['GBP基本','写真・動画','口コミ','投稿','運用管理','NGチェック'];
+const GBP_PRIORITY_CLASS = { '必須':'must', '推奨':'rec', '発展':'adv' };
+const GBP_PRIORITY_ICON = { '必須':'🔴', '推奨':'🟡', '発展':'🟢' };
+let gbpFilter = 'all';
+let gbpActiveCategory = 'GBP基本';
+let gbpSaveTimer;
 
 const defaultTemplates = [
   {id:uid(),name:'居酒屋向け',category:'居酒屋',updatedAt:now(),config:templateConfig('居酒屋向け')},
@@ -404,16 +770,49 @@ stores = stores.map(s=>({
   qrReady:!!s.qrReady,
   popReady:!!s.popReady,
   lastResponseAt:s.lastResponseAt||'未',
-  metrics:s.metrics||mockMetrics()
+  metrics:s.metrics||mockMetrics(),
+  externalLinks:Array.isArray(s.externalLinks)?s.externalLinks:[],
+  hearing:normalizeHearing(s.hearing),
+  gbpCheck:normalizeGbpCheck(s.gbpCheck)
 }));
 let currentStoreId = null;
 let previewMode = 'pc';
 let autoSaveTimer;
+let hearingAutoSaveTimer;
 let selectedStoreIds = new Set();
 let confirmAction = null;
 let editHistory = JSON.parse(localStorage.getItem(LS.history)||'[]');
 
-function saveStores(){ localStorage.setItem(LS.stores, JSON.stringify(stores)); renderStores(); renderAnalytics(); renderDiagnosisStores(); }
+function ensureStoreExternalLinks(store){ if(store && !Array.isArray(store.externalLinks)) store.externalLinks = []; return store; }
+function defaultHearing(){ return {mtgDate:'',attendees:'',q1:'',q2:'',q3:'',q4:'',q5:'',q6:'',q7:'',q8:'',q9:'',q10:'',q11:'',q12:'',free:'',savedAt:''}; }
+function normalizeHearing(hearing){ return {...defaultHearing(), ...(hearing||{})}; }
+function ensureStoreHearing(store){ if(store) store.hearing = normalizeHearing(store.hearing); return store; }
+function defaultGbpCheck(){
+  const items = {};
+  GBP_CHECK_ITEMS.forEach(it=>{ items[it.id] = { checked:false, evaluation:'', note:'' }; });
+  return { items, lastUpdated:'' };
+}
+function normalizeGbpCheck(gbp){
+  const base = defaultGbpCheck();
+  if(!gbp || typeof gbp !== 'object') return base;
+  const items = { ...base.items };
+  if(gbp.items && typeof gbp.items === 'object'){
+    GBP_CHECK_ITEMS.forEach(it=>{
+      const src = gbp.items[it.id];
+      if(src && typeof src === 'object'){
+        items[it.id] = {
+          checked: !!src.checked,
+          evaluation: typeof src.evaluation === 'string' ? src.evaluation : '',
+          note: typeof src.note === 'string' ? src.note : ''
+        };
+      }
+    });
+  }
+  return { items, lastUpdated: typeof gbp.lastUpdated === 'string' ? gbp.lastUpdated : '' };
+}
+function ensureStoreGbpCheck(store){ if(store) store.gbpCheck = normalizeGbpCheck(store.gbpCheck); return store; }
+function normalizeStores(){ stores.forEach(s=>{ ensureStoreExternalLinks(s); ensureStoreHearing(s); ensureStoreGbpCheck(s); }); }
+function saveStores(){ normalizeStores(); localStorage.setItem(LS.stores, JSON.stringify(stores)); renderStores(); renderAnalytics(); renderDiagnosisStores(); }
 function saveTemplates(){ localStorage.setItem(LS.templates, JSON.stringify(templates)); renderTemplates(); }
 function saveHistory(){ localStorage.setItem(LS.history, JSON.stringify(editHistory.slice(0,20))); }
 function initBaseUrl(){
@@ -460,7 +859,7 @@ function renderStores(){
   const rows = stores.filter(s=>s.name.includes(q));
   $('#storeTable').innerHTML = rows.map(s=>`<tr>
     <td><input type="checkbox" ${selectedStoreIds.has(s.id)?'checked':''} onchange="toggleStoreSelection('${s.id}',this.checked)" /></td>
-    <td class="storeName">${s.name}</td>
+    <td class="storeName clickable" onclick="goEdit('${s.id}')">${s.name}</td>
     <td>
       <div class="statusGrid">
         <span class="statusItem ${s.status==='公開中'?'ok':'warn'}">${s.status}</span>
@@ -508,7 +907,7 @@ function buildDistributionUrl(store){
 function createStoreFromTemplate(){
   if(!canEdit()) return alert('閲覧者は新規作成できません');
   const t = templates.find(v=>v.id===$('#newFromTemplate').value);
-  const s = {id:uid(),name:`新規店舗-${stores.length+1}`,status:'下書き',updatedAt:now(),author:'',reviewUrl:'',config:JSON.parse(JSON.stringify(t.config)),url:'',metrics:mockMetrics(),templateId:t.id,qrReady:false,popReady:false,lastResponseAt:'未'};
+  const s = {id:uid(),name:`新規店舗-${stores.length+1}`,status:'下書き',updatedAt:now(),author:'',reviewUrl:'',config:JSON.parse(JSON.stringify(t.config)),url:'',metrics:mockMetrics(),templateId:t.id,qrReady:false,popReady:false,lastResponseAt:'未',externalLinks:[],hearing:defaultHearing()};
   stores.unshift(s); saveStores(); openEditor(s.id);
   pushHistory('新規作成', `テンプレ「${t.name}」から店舗作成`);
 }
@@ -526,9 +925,412 @@ function toggleStoreSelection(id, checked){
 }
 function selectedStores(){ return stores.filter(s=>selectedStoreIds.has(s.id)); }
 
+function escapeHtml(value){
+  return String(value ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function encodedArg(value){ return encodeURIComponent(String(value ?? '')); }
+function getLinkLabel(link){ return link.type === 'custom' ? (link.label || 'その他') : (LINK_TYPE_LABELS[link.type] || link.type); }
+function getLinkIconText(link){ return getLinkLabel(link).slice(0,2).toUpperCase(); }
+function showToast(message){
+  const old = document.querySelector('.toast');
+  if(old) old.remove();
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = message;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 1800);
+}
+function renderLinks(store=currentStore()){
+  const list = $('#linkList');
+  if(!list) return;
+  if(!store){ list.innerHTML = '<div class="muted">店舗を選択してください</div>'; return; }
+  ensureStoreExternalLinks(store);
+  list.innerHTML = store.externalLinks.map((link,index)=>{
+    const label = escapeHtml(getLinkLabel(link));
+    const arg = encodedArg(link.url || '');
+    return `<div class="link-item">
+      <div class="link-clickable" onclick="openLink(decodeURIComponent('${arg}'))">
+        <div class="link-icon" data-type="${escapeHtml(link.type || 'custom')}">${escapeHtml(getLinkIconText(link))}</div>
+        <div class="link-type-label">${label}</div>
+      </div>
+      <div class="link-actions">
+        <button class="btn link-copy-btn" onclick="copyLink(decodeURIComponent('${arg}'))">コピー</button>
+        <button class="link-delete-btn" ${canEdit()?'':'disabled'} onclick="deleteLink(${index})" aria-label="削除">×</button>
+      </div>
+    </div>`;
+  }).join('') || '<div class="muted">外部リンクはまだ登録されていません</div>';
+}
+function updateLinkLabelVisibility(){
+  const type = $('#newLinkType')?.value;
+  const label = $('#newLinkLabel');
+  if(!label) return;
+  label.style.display = type === 'custom' ? '' : 'none';
+  if(type !== 'custom') label.value = '';
+}
+function addLink(){
+  if(!canEdit()) return alert('閲覧者は編集できません');
+  const store = currentStore();
+  if(!store) return alert('店舗を選択してください');
+  ensureStoreExternalLinks(store);
+  const type = $('#newLinkType').value;
+  const url = $('#newLinkUrl').value.trim();
+  const label = $('#newLinkLabel').value.trim();
+  if(!url) return alert('URLを入力してください');
+  if(!/^https?:\/\/.+/.test(url)) return alert('正しいURLを入力してください');
+  if(type === 'custom' && !label) return alert('ラベルを入力してください');
+  if(type !== 'custom' && store.externalLinks.some(link=>link.type === type)){
+    return alert('この種類は既に登録されています。編集または削除してください');
+  }
+  store.externalLinks.push({type, url, label:type === 'custom' ? label : ''});
+  store.updatedAt = now();
+  saveStores();
+  renderLinks(store);
+  $('#newLinkUrl').value = '';
+  $('#newLinkLabel').value = '';
+  updateLinkLabelVisibility();
+}
+function openLink(url){ if(url) window.open(url, '_blank'); }
+async function copyLink(url){
+  if(!url) return;
+  try{
+    await navigator.clipboard.writeText(url);
+  }catch(e){
+    const tmp = document.createElement('textarea');
+    tmp.value = url;
+    tmp.style.position = 'fixed';
+    tmp.style.left = '-9999px';
+    document.body.appendChild(tmp);
+    tmp.select();
+    document.execCommand('copy');
+    tmp.remove();
+  }
+  showToast('コピーしました');
+}
+function deleteLink(index){
+  if(!canEdit()) return alert('閲覧者は編集できません');
+  const store = currentStore();
+  if(!store) return;
+  ensureStoreExternalLinks(store);
+  const link = store.externalLinks[index];
+  if(!link) return;
+  openConfirm('外部リンクを削除', [`${getLinkLabel(link)} を削除します。`], ()=>{
+    store.externalLinks.splice(index,1);
+    store.updatedAt = now();
+    saveStores();
+    renderLinks(store);
+    closeConfirm();
+  });
+}
+
+function renderHearing(store=currentStore()){
+  if(!document.getElementById('hearingStatus')) return;
+  if(!store){ updateHearingStatus(null); return; }
+  ensureStoreHearing(store);
+  document.querySelectorAll('.hearingInput').forEach(el=>{
+    const field = el.dataset.hearingField;
+    el.value = store.hearing[field] || '';
+  });
+  updateHearingStatus(store);
+}
+function updateHearingStatus(store=currentStore()){
+  const status = $('#hearingStatus');
+  const saved = $('#hearingSavedAt');
+  if(!status || !saved) return;
+  if(!store){ status.textContent = '未入力'; saved.textContent = ''; return; }
+  ensureStoreHearing(store);
+  const filled = [...HEARING_QUESTIONS.map(([key])=>key), 'free'].filter(key=>(store.hearing[key]||'').trim()).length;
+  status.textContent = filled ? `${filled}/13 入力済み` : '未入力';
+  saved.textContent = store.hearing.savedAt ? `最終保存: ${new Date(store.hearing.savedAt).toLocaleTimeString('ja-JP')}` : '';
+}
+function collectHearingFromForm(store=currentStore()){
+  if(!store) return null;
+  ensureStoreHearing(store);
+  document.querySelectorAll('.hearingInput').forEach(el=>{
+    const field = el.dataset.hearingField;
+    store.hearing[field] = el.value;
+  });
+  return store.hearing;
+}
+function scheduleHearingSave(){
+  const store = currentStore();
+  if(!store || !canEdit()) return;
+  collectHearingFromForm(store);
+  updateHearingStatus(store);
+  clearTimeout(hearingAutoSaveTimer);
+  hearingAutoSaveTimer = setTimeout(()=>{
+    const current = currentStore();
+    if(!current) return;
+    collectHearingFromForm(current);
+    current.hearing.savedAt = new Date().toISOString();
+    current.updatedAt = now();
+    saveStores();
+    updateHearingStatus(current);
+  }, 500);
+}
+function formatHearingMemo(store=currentStore()){
+  if(!store) return '';
+  ensureStoreHearing(store);
+  const h = store.hearing;
+  const lines = [
+    `# ヒアリングメモ - ${store.name || '-'}`,
+    `日時: ${h.mtgDate || '-'}`,
+    `参加者: ${h.attendees || '-'}`,
+    ''
+  ];
+  HEARING_QUESTIONS.forEach(([key,label],idx)=>{
+    lines.push(`${idx+1}. ${label}`);
+    lines.push((h[key] || '').trim() || '-');
+    lines.push('');
+  });
+  lines.push('自由記述');
+  lines.push((h.free || '').trim() || '-');
+  return lines.join('\n');
+}
+async function copyHearingMemo(event){
+  event?.stopPropagation();
+  const text = formatHearingMemo();
+  if(!text) return;
+  const btn = $('#copyHearingBtn');
+  const oldText = btn.textContent;
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch(e){
+    const tmp = document.createElement('textarea');
+    tmp.value = text;
+    tmp.style.position = 'fixed';
+    tmp.style.left = '-9999px';
+    document.body.appendChild(tmp);
+    tmp.select();
+    document.execCommand('copy');
+    tmp.remove();
+  }
+  btn.textContent = 'コピーしました';
+  setTimeout(()=>{ btn.textContent = oldText; }, 2000);
+}
+function clearHearingMemo(event){
+  event?.stopPropagation();
+  const store = currentStore();
+  if(!store) return;
+  const run = ()=>{
+    store.hearing = defaultHearing();
+    store.updatedAt = now();
+    saveStores();
+    renderHearing(store);
+    pushHistory('ヒアリングメモ', 'ヒアリングメモをクリア');
+  };
+  if(typeof openConfirm === 'function'){
+    openConfirm('ヒアリングメモをクリア', ['入力済みのヒアリングメモをすべて削除します。'], ()=>{ run(); closeConfirm(); });
+  }else if(confirm('ヒアリングメモをクリアしますか？')){
+    run();
+  }
+}
+
+// ===== GBPチェックシート =====
+function getGbpFilteredItems(){
+  if(gbpFilter === 'all') return GBP_CHECK_ITEMS;
+  return GBP_CHECK_ITEMS.filter(it=>it.priority === gbpFilter);
+}
+function calcGbpRate(store, filter){
+  if(!store) return {done:0, total:0, pct:0};
+  ensureStoreGbpCheck(store);
+  const target = (filter && filter !== 'all') ? GBP_CHECK_ITEMS.filter(it=>it.priority === filter) : GBP_CHECK_ITEMS;
+  const done = target.filter(it=>store.gbpCheck.items[it.id]?.checked).length;
+  const total = target.length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  return {done, total, pct};
+}
+function gbpProgressClass(pct){
+  if(pct < 30) return 'low';
+  if(pct < 70) return 'mid';
+  return 'high';
+}
+function renderGbpCheck(store=currentStore()){
+  const list = document.getElementById('gbpItemList');
+  const rateText = document.getElementById('gbpRateText');
+  const bar = document.getElementById('gbpProgressBar');
+  const updatedAt = document.getElementById('gbpUpdatedAt');
+  const tabs = document.getElementById('gbpCatTabs');
+  const chips = document.getElementById('gbpFilterChips');
+  if(!list || !rateText || !bar || !tabs || !chips) return;
+
+  if(chips){
+    chips.querySelectorAll('.chip').forEach(c=>{
+      c.classList.toggle('on', c.dataset.filter === gbpFilter);
+    });
+  }
+
+  if(!store){
+    rateText.textContent = '全体達成率: 0/0（0%）';
+    bar.style.width = '0%';
+    bar.className = 'gbp-progress-bar low';
+    if(updatedAt) updatedAt.textContent = '';
+    tabs.innerHTML = '';
+    list.innerHTML = '<div class="muted">店舗を選択してください</div>';
+    return;
+  }
+  ensureStoreGbpCheck(store);
+
+  const rate = calcGbpRate(store, gbpFilter);
+  rateText.innerHTML = `全体達成率: <strong>${rate.done}/${rate.total}</strong>（${rate.pct}%）`;
+  bar.style.width = rate.pct + '%';
+  bar.className = 'gbp-progress-bar ' + gbpProgressClass(rate.pct);
+  if(updatedAt){
+    updatedAt.textContent = store.gbpCheck.lastUpdated
+      ? `最終更新: ${new Date(store.gbpCheck.lastUpdated).toLocaleString('ja-JP')}`
+      : '';
+  }
+
+  tabs.innerHTML = GBP_CATEGORIES.map(cat=>{
+    const catItems = getGbpFilteredItems().filter(it=>it.category === cat);
+    const catDone = catItems.filter(it=>store.gbpCheck.items[it.id]?.checked).length;
+    return `<span class="cat-tab ${cat===gbpActiveCategory?'on':''}" onclick="setGbpCategory('${cat}')">${cat} (${catDone}/${catItems.length})</span>`;
+  }).join('');
+
+  const visible = getGbpFilteredItems().filter(it=>it.category === gbpActiveCategory);
+  if(!visible.length){
+    list.innerHTML = '<div class="muted">該当する項目がありません</div>';
+    return;
+  }
+  list.innerHTML = visible.map(it=>{
+    const state = store.gbpCheck.items[it.id] || {checked:false, evaluation:'', note:''};
+    const prCls = GBP_PRIORITY_CLASS[it.priority] || '';
+    const prIcon = GBP_PRIORITY_ICON[it.priority] || '';
+    const noteOpen = !!(state.note && state.note.trim());
+    return `<div class="gbp-item">
+      <div class="gbp-item-row">
+        <div class="gbp-item-check">
+          <input type="checkbox" ${state.checked?'checked':''} ${canEdit()?'':'disabled'} onchange="onGbpItemChange(${it.id},'checked',this.checked)" />
+        </div>
+        <div class="gbp-item-main">
+          <div class="gbp-item-title">
+            <span>${escapeHtml(it.title)}</span>
+            <span class="gbp-priority ${prCls}">${prIcon} ${it.priority}</span>
+          </div>
+          <div class="gbp-item-desc">${escapeHtml(it.desc)}</div>
+          <span class="gbp-note-toggle" onclick="toggleGbpNote(${it.id})">📝 メモ${noteOpen?'を編集':'を追加'}</span>
+          <div class="gbp-note-area${noteOpen?' show':''}" id="gbpNote_${it.id}">
+            <textarea ${canEdit()?'':'disabled'} placeholder="メモを入力" oninput="onGbpItemChange(${it.id},'note',this.value)">${escapeHtml(state.note)}</textarea>
+          </div>
+        </div>
+        <div class="gbp-item-eval">
+          <select ${canEdit()?'':'disabled'} onchange="onGbpItemChange(${it.id},'evaluation',this.value)">
+            <option value="" ${state.evaluation===''?'selected':''}>評価</option>
+            <option value="◎" ${state.evaluation==='◎'?'selected':''}>◎</option>
+            <option value="○" ${state.evaluation==='○'?'selected':''}>○</option>
+            <option value="△" ${state.evaluation==='△'?'selected':''}>△</option>
+            <option value="×" ${state.evaluation==='×'?'selected':''}>×</option>
+          </select>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function setGbpFilter(filter){
+  gbpFilter = filter;
+  const visibleCats = GBP_CATEGORIES.filter(cat=>getGbpFilteredItems().some(it=>it.category===cat));
+  if(!visibleCats.includes(gbpActiveCategory) && visibleCats.length){
+    gbpActiveCategory = visibleCats[0];
+  }
+  renderGbpCheck();
+}
+function setGbpCategory(cat){
+  gbpActiveCategory = cat;
+  renderGbpCheck();
+}
+function toggleGbpNote(id){
+  const el = document.getElementById('gbpNote_'+id);
+  if(el) el.classList.toggle('show');
+}
+function onGbpItemChange(id, key, value){
+  if(!canEdit()) return;
+  const store = currentStore();
+  if(!store) return;
+  ensureStoreGbpCheck(store);
+  const item = store.gbpCheck.items[id] || { checked:false, evaluation:'', note:'' };
+  if(key === 'checked') item.checked = !!value;
+  else item[key] = value;
+  store.gbpCheck.items[id] = item;
+  scheduleGbpSave();
+  if(key === 'checked' || key === 'evaluation'){
+    renderGbpCheck(store);
+    renderDashboard();
+  }
+}
+function scheduleGbpSave(){
+  const store = currentStore();
+  if(!store) return;
+  clearTimeout(gbpSaveTimer);
+  gbpSaveTimer = setTimeout(()=>{
+    const current = currentStore();
+    if(!current) return;
+    ensureStoreGbpCheck(current);
+    current.gbpCheck.lastUpdated = new Date().toISOString();
+    current.updatedAt = now();
+    saveStores();
+    const updatedAt = document.getElementById('gbpUpdatedAt');
+    if(updatedAt) updatedAt.textContent = `最終更新: ${new Date(current.gbpCheck.lastUpdated).toLocaleString('ja-JP')}`;
+  }, 500);
+}
+function formatGbpCheck(store=currentStore()){
+  if(!store) return '';
+  ensureStoreGbpCheck(store);
+  const rate = calcGbpRate(store, 'all');
+  const updated = store.gbpCheck.lastUpdated ? new Date(store.gbpCheck.lastUpdated).toLocaleString('ja-JP') : '-';
+  const lines = [
+    `# GBPチェックシート - ${store.name || '-'}`,
+    `最終更新: ${updated}`,
+    `達成率: ${rate.done}/${rate.total} (${rate.pct}%)`,
+    ''
+  ];
+  GBP_CATEGORIES.forEach(cat=>{
+    lines.push(`## ${cat}`);
+    GBP_CHECK_ITEMS.filter(it=>it.category===cat).forEach(it=>{
+      const st = store.gbpCheck.items[it.id] || {checked:false, evaluation:'', note:''};
+      const mark = st.checked ? '✓' : ' ';
+      const ev = st.evaluation ? ` - 評価: ${st.evaluation}` : '';
+      const memo = (st.note||'').trim() ? ` - メモ: ${st.note.trim()}` : '';
+      lines.push(`[${mark}] ${it.id}. ${it.title} [${it.priority}]${ev}${memo}`);
+    });
+    lines.push('');
+  });
+  return lines.join('\n');
+}
+async function copyGbpCheck(event){
+  event?.stopPropagation();
+  const store = currentStore();
+  if(!store) return;
+  const text = formatGbpCheck(store);
+  const btn = document.getElementById('copyGbpBtn');
+  const oldText = btn ? btn.textContent : '';
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch(e){
+    const tmp = document.createElement('textarea');
+    tmp.value = text;
+    tmp.style.position = 'fixed';
+    tmp.style.left = '-9999px';
+    document.body.appendChild(tmp);
+    tmp.select();
+    document.execCommand('copy');
+    tmp.remove();
+  }
+  if(btn){
+    btn.textContent = 'コピーしました';
+    setTimeout(()=>{ btn.textContent = oldText; }, 2000);
+  }
+}
+window.setGbpFilter = setGbpFilter;
+window.setGbpCategory = setGbpCategory;
+window.toggleGbpNote = toggleGbpNote;
+window.onGbpItemChange = onGbpItemChange;
+window.copyGbpCheck = copyGbpCheck;
+
 function openEditor(id){
   currentStoreId = id;
   const s = stores.find(v=>v.id===id); if(!s) return;
+  ensureStoreExternalLinks(s);
+  ensureStoreHearing(s);
+  ensureStoreGbpCheck(s);
   if(s.author && !AUTHORS.includes(s.author) && !Array.from($('#eAuthor').options).find(o=>o.value===s.author)){
     $('#eAuthor').insertAdjacentHTML('beforeend', `<option value="${s.author}">${s.author}</option>`);
   }
@@ -538,6 +1340,9 @@ function openEditor(id){
   $('#eDistUrl').value = s.url || '';
   if(s.url) $('#openUrlBtn').href = s.url; else $('#openUrlBtn').removeAttribute('href');
   renderPreview();
+  renderLinks(s);
+  renderHearing(s);
+  renderGbpCheck(s);
   renderChecklist(validateStoreDraft(s), s);
   renderHistory();
   updateRoleUi();
@@ -896,7 +1701,8 @@ async function bulkCopyUrls(){
 function updateRoleUi(){
   const viewer = activeRole()==='閲覧者';
   const editor = activeRole()==='編集者';
-  ['#createStoreBtn','#quickCreateStoreBtn','#quickDuplicateBtn','#saveDraftBtn','#applyBtn','#addQuestionBtn','#applyQuestionTemplateBtn'].forEach(sel=>$(sel).disabled = viewer);
+  ['#createStoreBtn','#quickCreateStoreBtn','#quickDuplicateBtn','#saveDraftBtn','#applyBtn','#addQuestionBtn','#applyQuestionTemplateBtn','#addLinkBtn','#newLinkType','#newLinkLabel','#newLinkUrl','#clearHearingBtn'].forEach(sel=>$(sel).disabled = viewer);
+  document.querySelectorAll('.hearingInput').forEach(el=>el.disabled = viewer);
   $('#publishBtn').disabled = !canPublish();
   ['#bulkPublishBtn','#bulkDraftBtn','#bulkApplyTemplateBtn'].forEach(sel=>$(sel).disabled = !canBulkPublish());
   $('#restoreBtn').disabled = viewer;
@@ -917,7 +1723,7 @@ $('#createStoreBtn').onclick = createStoreFromTemplate;
 $('#quickCreateStoreBtn').onclick = ()=>{
   if(!canEdit()) return alert('閲覧者は新規作成できません');
   const t = templates[0];
-  const s = {id:uid(),name:`新規店舗-${stores.length+1}`,status:'下書き',updatedAt:now(),author:'',reviewUrl:'',config:JSON.parse(JSON.stringify(t.config)),url:'',metrics:mockMetrics(),templateId:t.id,qrReady:false,popReady:false,lastResponseAt:'未'};
+  const s = {id:uid(),name:`新規店舗-${stores.length+1}`,status:'下書き',updatedAt:now(),author:'',reviewUrl:'',config:JSON.parse(JSON.stringify(t.config)),url:'',metrics:mockMetrics(),templateId:t.id,qrReady:false,popReady:false,lastResponseAt:'未',externalLinks:[],hearing:defaultHearing()};
   stores.unshift(s); saveStores(); openEditor(s.id); document.querySelector('[data-tab="editor"]').click();
 };
 $('#quickDuplicateBtn').onclick = ()=>{
@@ -927,6 +1733,9 @@ $('#quickDuplicateBtn').onclick = ()=>{
 };
 $('#addQuestionBtn').onclick = addQuestion;
 $('#applyQuestionTemplateBtn').onclick = applyQuestionTemplate;
+$('#addLinkBtn').onclick = addLink;
+$('#newLinkType').addEventListener('change', updateLinkLabelVisibility);
+document.querySelectorAll('.hearingInput').forEach(el=>el.addEventListener('input', scheduleHearingSave));
 $('#saveDraftBtn').onclick = ()=>hydrateStoreFromEditor('下書き');
 $('#publishBtn').onclick = ()=>{ if(!canPublish()) return alert('管理者のみ公開できます'); hydrateStoreFromEditor('公開中'); };
 $('#restoreBtn').onclick = restoreUndo;
@@ -956,6 +1765,8 @@ $('#bulkApplyTemplateBtn').onclick = ()=>{
   const t = templates.find(v=>v.id===$('#bulkTemplateSel').value);
   runBulkAction('一括テンプレ差し替え', targets=>targets.forEach(s=>{s.config=JSON.parse(JSON.stringify(t.config)); s.templateId=t.id;}));
 };
+
+document.getElementById('dashGbpSort')?.addEventListener('change', renderDashGbp);
 
 $('#confirmCancelBtn').onclick = closeConfirm;
 $('#confirmOkBtn').onclick = ()=>{ if(confirmAction) confirmAction(); };
@@ -1015,6 +1826,8 @@ function renderDashboard(){
     </tr>`;
   }).join('') || '<tr><td colspan="7" class="muted">店舗がありません</td></tr>';
 
+  renderDashGbp();
+
   const dashData = JSON.parse(localStorage.getItem(LS_DASHBOARD)||'{}');
   const actions = [
     {id:'action1', text:'全店舗の月次レポートを送付する'},
@@ -1034,6 +1847,49 @@ function saveDashAction(id, checked){
   renderDashboard();
 }
 window.saveDashAction = saveDashAction;
+
+function renderDashGbp(){
+  const tbody = document.getElementById('dashGbpTable');
+  const sortSel = document.getElementById('dashGbpSort');
+  if(!tbody) return;
+  const sort = sortSel ? sortSel.value : 'rateDesc';
+  const rows = stores.map(s=>{
+    ensureStoreGbpCheck(s);
+    const all = calcGbpRate(s, 'all');
+    const must = calcGbpRate(s, '必須');
+    return { store:s, all, must };
+  });
+  rows.sort((a,b)=>{
+    if(sort === 'rateAsc') return a.all.pct - b.all.pct;
+    if(sort === 'name') return (a.store.name||'').localeCompare(b.store.name||'', 'ja');
+    if(sort === 'updated'){
+      const at = a.store.gbpCheck.lastUpdated || '';
+      const bt = b.store.gbpCheck.lastUpdated || '';
+      return bt.localeCompare(at);
+    }
+    return b.all.pct - a.all.pct;
+  });
+  tbody.innerHTML = rows.map(r=>{
+    const cls = gbpProgressClass(r.all.pct);
+    const mustCls = gbpProgressClass(r.must.pct);
+    const updated = r.store.gbpCheck.lastUpdated
+      ? new Date(r.store.gbpCheck.lastUpdated).toLocaleDateString('ja-JP')
+      : '-';
+    return `<tr>
+      <td><span class="storeName clickable" onclick="goEdit('${r.store.id}')">${escapeHtml(r.store.name)}</span></td>
+      <td class="dash-gbp-cell">
+        <div><strong>${r.all.done}/${r.all.total}</strong> (${r.all.pct}%)</div>
+        <div class="dash-gbp-bar-wrap"><div class="dash-gbp-bar ${cls}" style="width:${r.all.pct}%"></div></div>
+      </td>
+      <td>
+        <div><strong>${r.must.done}/${r.must.total}</strong> (${r.must.pct}%)</div>
+        <div class="dash-gbp-bar-wrap"><div class="dash-gbp-bar ${mustCls}" style="width:${r.must.pct}%"></div></div>
+      </td>
+      <td>${updated}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="4" class="muted">店舗がありません</td></tr>';
+}
+window.renderDashGbp = renderDashGbp;
 
 // --- 無料診断 ---
 function calcDiagnosisScore(inputs){
@@ -1064,10 +1920,12 @@ function calcDiagnosisScore(inputs){
   score += replyScore;
   details.push({label:'口コミ返信', score:replyScore, max:15, comment:replyScore===15?'全件返信できています':replyScore>=7?'未返信口コミに対応しましょう':'口コミへの返信を始めましょう'});
 
-  const rank = Number(inputs.currentRank)||0;
-  const rankScore = rank>=1&&rank<=3?15:rank<=10?8:rank<=20?3:0;
+  const rankValue = String(inputs.currentRank||'');
+  const isRankOutside = rankValue === 'ランキング外' || rankValue === 'outside';
+  const rank = isRankOutside ? 0 : Number(rankValue)||0;
+  const rankScore = isRankOutside ? 0 : rank>=1&&rank<=3?15:rank<=10?8:rank<=20?3:0;
   score += rankScore;
-  details.push({label:'検索順位', score:rankScore, max:15, comment:rankScore===15?'トップ3に入っています':rankScore>=8?'トップ3を目指しましょう':'順位改善が必要です'});
+  details.push({label:'検索順位', score:rankScore, max:15, comment:isRankOutside?'ランキング外のため、露出改善が必要です':rankScore===15?'トップ3に入っています':rankScore>=8?'トップ3を目指しましょう':'順位改善が必要です'});
 
   const grade = score>=80?'A':score>=60?'B':score>=40?'C':'D';
   const gradeText = {A:'優秀', B:'改善余地あり', C:'要改善', D:'緊急改善が必要'};
@@ -1075,6 +1933,9 @@ function calcDiagnosisScore(inputs){
 }
 
 function runDiagnosis(){
+  const rankValidationError = validateDiagnosisRankInput();
+  if(rankValidationError) return alert(rankValidationError);
+
   const inputs = {
     storeName: $('#diagStoreName').value.trim(),
     industry: $('#diagIndustry').value,
@@ -1085,7 +1946,7 @@ function runDiagnosis(){
     lastPost: $('#diagLastPost').value,
     replyStatus: $('#diagReplyStatus').value,
     competitorAvg: $('#diagCompetitorAvg').value,
-    currentRank: $('#diagCurrentRank').value
+    currentRank: getDiagnosisRankValue()
   };
   if(!inputs.storeName) return alert('店舗名を入力してください');
   const result = calcDiagnosisScore(inputs);
@@ -1118,12 +1979,55 @@ function runDiagnosis(){
 
 function printDiagnosis(){
   const section = document.getElementById('tab-diagnosis');
+  const oldTitle = document.title;
+  const resultTitle = document.querySelector('#diagResult h3')?.textContent?.trim() || '診断結果';
+  document.title = resultTitle;
+  document.body.classList.add('printDiagnosisMode');
   section.classList.add('printTarget');
   window.addEventListener('afterprint', function handler(){
+    document.title = oldTitle;
+    document.body.classList.remove('printDiagnosisMode');
     section.classList.remove('printTarget');
     window.removeEventListener('afterprint', handler);
   });
   window.print();
+}
+
+function getDiagnosisRankValue(){
+  const outside = document.getElementById('diagRankOutside');
+  const rankInput = document.getElementById('diagCurrentRankNumber');
+  if(outside?.checked) return 'ランキング外';
+  return (rankInput?.value || '').trim();
+}
+
+function validateDiagnosisRankInput(){
+  const outside = document.getElementById('diagRankOutside');
+  const value = getDiagnosisRankValue();
+  if(outside?.checked) return '';
+  if(!value) return '順位を入力してください';
+  if(!/^\d+$/.test(value)) return '1〜100の整数で入力してください';
+  const rank = Number(value);
+  if(rank < 1 || rank > 100) return '1〜100の整数で入力してください';
+  return '';
+}
+
+function syncDiagnosisRankInput(){
+  const hidden = document.getElementById('diagCurrentRank');
+  const outside = document.getElementById('diagRankOutside');
+  const rankInput = document.getElementById('diagCurrentRankNumber');
+  if(!hidden || !outside || !rankInput) return;
+  if(outside.checked){
+    rankInput.value = '';
+    rankInput.disabled = true;
+    hidden.value = 'ランキング外';
+  }else{
+    rankInput.disabled = false;
+    hidden.value = rankInput.value.trim();
+  }
+}
+
+function renderDiagnosisRankOptions(){
+  syncDiagnosisRankInput();
 }
 
 function renderDiagnosisStores(){
@@ -1138,6 +2042,7 @@ function onDiagStoreChange(sel){
 window.onDiagStoreChange = onDiagStoreChange;
 window.runDiagnosis = runDiagnosis;
 window.printDiagnosis = printDiagnosis;
+window.syncDiagnosisRankInput = syncDiagnosisRankInput;
 
 // --- 順位トラッキング ---
 let rankingEntries = JSON.parse(localStorage.getItem(LS_RANKING)||'[]');
@@ -1303,10 +2208,10 @@ window.printReport = printReport;
 // boot
 if(stores.length===0){
   const t = templates[0];
-  const s = {id:uid(),name:'サンプル店舗',status:'下書き',updatedAt:now(),author:'管理者',reviewUrl:'',config:JSON.parse(JSON.stringify(t.config)),metrics:mockMetrics(),url:'',templateId:t.id,qrReady:false,popReady:false,lastResponseAt:'未'};
+  const s = {id:uid(),name:'サンプル店舗',status:'下書き',updatedAt:now(),author:'管理者',reviewUrl:'',config:JSON.parse(JSON.stringify(t.config)),metrics:mockMetrics(),url:'',templateId:t.id,qrReady:false,popReady:false,lastResponseAt:'未',externalLinks:[],hearing:defaultHearing()};
   stores.push(s); saveStores();
 }
-initBaseUrl(); renderAuthorOptions(); renderTemplates(); renderStores(); openEditor(stores[0]?.id); renderAnalytics(); renderHistory(); updateRoleUi(); renderDashboard(); renderRanking(); renderMonthly(); renderDiagnosisStores();
+initBaseUrl(); renderAuthorOptions(); renderTemplates(); renderStores(); openEditor(stores[0]?.id); renderAnalytics(); renderHistory(); updateRoleUi(); renderDashboard(); renderRanking(); renderMonthly(); renderDiagnosisStores(); renderDiagnosisRankOptions();
 </script>
 </body>
 </html>
