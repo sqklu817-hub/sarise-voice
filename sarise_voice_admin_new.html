@@ -252,6 +252,7 @@
     <nav class="sidebar-nav tabs">
       <button data-tab="stores" class="on">店舗一覧</button>
       <button data-tab="editor">店舗編集</button>
+      <button data-tab="operation">運用</button>
       <button data-tab="templates">テンプレート</button>
       <button data-tab="analytics">分析</button>
       <button data-tab="dashboard">ダッシュボード</button>
@@ -357,67 +358,6 @@
         </div>
 
         <div class="card">
-          <details id="hearingDetails">
-            <summary class="row" style="justify-content:space-between;gap:10px;cursor:pointer">
-              <div class="row" style="gap:10px">
-                <h2 style="margin:0">ヒアリングメモ</h2>
-                <span class="tag" id="hearingStatus">未入力</span>
-                <span class="muted" id="hearingSavedAt"></span>
-              </div>
-              <div class="row" style="gap:6px">
-                <button class="btn" id="copyHearingBtn" onclick="event.stopPropagation();copyHearingMemo(event)">メモをコピー</button>
-                <button class="btn warn" id="clearHearingBtn" onclick="event.stopPropagation();clearHearingMemo(event)">クリア</button>
-              </div>
-            </summary>
-            <div style="margin-top:14px">
-              <div class="grid2">
-                <div><label class="muted">MTG日時</label><input id="hearingMtgDate" class="hearingInput" data-hearing-field="mtgDate" type="datetime-local" /></div>
-                <div><label class="muted">参加者</label><input id="hearingAttendees" class="hearingInput" data-hearing-field="attendees" placeholder="例：先方2名 / 自社1名" /></div>
-              </div>
-              <div class="grid2" style="margin-top:12px">
-                <div><label class="muted">1. ホットペッパーの月額料金</label><textarea class="hearingInput" data-hearing-field="q1"></textarea></div>
-                <div><label class="muted">2. その他の広告費</label><textarea class="hearingInput" data-hearing-field="q2"></textarea></div>
-                <div><label class="muted">3. 月の来客数</label><textarea class="hearingInput" data-hearing-field="q3"></textarea></div>
-                <div><label class="muted">4. 月の新規客数</label><textarea class="hearingInput" data-hearing-field="q4"></textarea></div>
-                <div><label class="muted">5. 平均客単価</label><textarea class="hearingInput" data-hearing-field="q5"></textarea></div>
-                <div><label class="muted">6. 新規客の流入経路と割合</label><textarea class="hearingInput" data-hearing-field="q6"></textarea></div>
-                <div><label class="muted">7. 1日の施術可能枠と空き状況</label><textarea class="hearingInput" data-hearing-field="q7"></textarea></div>
-                <div><label class="muted">8. メインの客層と集客したい施術</label><textarea class="hearingInput" data-hearing-field="q8"></textarea></div>
-                <div><label class="muted">9. GBP権限と写真素材の有無</label><textarea class="hearingInput" data-hearing-field="q9"></textarea></div>
-                <div><label class="muted">10. 3ヶ月で達成したい目標</label><textarea class="hearingInput" data-hearing-field="q10"></textarea></div>
-                <div><label class="muted">11. 気になってる競合・参考店舗</label><textarea id="h11" class="hearingInput" data-hearing-field="q11" placeholder="参考にしたい店・ベンチマーク・気になる近隣店など"></textarea></div>
-                <div><label class="muted">12. 過去に試した集客施策</label><textarea id="h12" class="hearingInput" data-hearing-field="q12" placeholder="チラシ／SNS広告／他業者経験／うまくいかなかったことなど"></textarea></div>
-              </div>
-              <div style="margin-top:12px"><label class="muted">自由記述（その他メモ）</label><textarea class="hearingInput" data-hearing-field="free"></textarea></div>
-            </div>
-          </details>
-        </div>
-
-        <div class="card">
-          <details id="gbpCheckDetails">
-            <summary class="gbp-summary">
-              <div class="gbp-summary-left">
-                <h2 style="margin:0">GBPチェックシート</h2>
-                <span class="gbp-rate-text" id="gbpRateText">全体達成率: 0/0（0%）</span>
-                <span class="muted" id="gbpUpdatedAt"></span>
-              </div>
-              <div class="gbp-summary-right">
-                <div class="gbp-filter-chips" id="gbpFilterChips">
-                  <span class="chip on" data-filter="all" onclick="event.stopPropagation();setGbpFilter('all')">全て</span>
-                  <span class="chip" data-filter="必須" onclick="event.stopPropagation();setGbpFilter('必須')">必須</span>
-                  <span class="chip" data-filter="推奨" onclick="event.stopPropagation();setGbpFilter('推奨')">推奨</span>
-                  <span class="chip" data-filter="発展" onclick="event.stopPropagation();setGbpFilter('発展')">発展</span>
-                </div>
-                <button class="btn" id="copyGbpBtn" onclick="event.stopPropagation();copyGbpCheck(event)">コピー</button>
-              </div>
-            </summary>
-            <div class="gbp-progress-wrap"><div class="gbp-progress-bar" id="gbpProgressBar" style="width:0%"></div></div>
-            <div class="gbp-cat-tabs" id="gbpCatTabs"></div>
-            <div id="gbpItemList"></div>
-          </details>
-        </div>
-
-        <div class="card">
           <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px"><h2 style="margin:0">質問編集</h2><div class="row" style="gap:8px;flex-wrap:wrap"><select id="questionTemplateSelect" class="input" style="min-width:160px"><option value="">テンプレートを選択</option><option value="restaurant">飲食店向け</option><option value="salon">美容室向け</option><option value="clinic">整骨院向け</option></select><button class="btn btn-secondary" id="applyQuestionTemplateBtn">質問に適用する</button><button class="btn" id="addQuestionBtn">質問を追加</button></div></div>
           <div id="questionList"></div>
         </div>
@@ -448,6 +388,91 @@
           <div class="row" style="justify-content:space-between"><h2 style="margin:0">リアルタイムプレビュー</h2><div class="row"><button class="btn" id="pcViewBtn">PC</button><button class="btn" id="spViewBtn">スマホ</button></div></div>
           <div id="previewBox" class="preview"></div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-operation" class="hidden">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <h2 style="margin:0">運用</h2>
+        <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+          <label class="muted" style="width:auto">店舗:</label>
+          <select id="operationStoreSelect" style="min-width:240px"></select>
+          <span class="muted" id="operationStoreInfo"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="operationEmptyCard" style="display:none">
+      <div class="muted" style="margin-bottom:10px">店舗が登録されていません。先に店舗一覧から店舗を追加してください。</div>
+      <button class="btn pri" id="operationGotoStoresBtn">店舗一覧へ</button>
+    </div>
+
+    <div class="card" id="operationNoStoreCard" style="display:none">
+      <div class="muted">店舗を選択してください</div>
+    </div>
+
+    <div id="operationPanel">
+      <div class="card">
+        <details id="hearingDetails">
+          <summary class="row" style="justify-content:space-between;gap:10px;cursor:pointer">
+            <div class="row" style="gap:10px">
+              <h2 style="margin:0">ヒアリングメモ</h2>
+              <span class="tag" id="hearingStatus">未入力</span>
+              <span class="muted" id="hearingSavedAt"></span>
+            </div>
+            <div class="row" style="gap:6px">
+              <button class="btn" id="copyHearingBtn" onclick="event.stopPropagation();copyHearingMemo(event)">メモをコピー</button>
+              <button class="btn warn" id="clearHearingBtn" onclick="event.stopPropagation();clearHearingMemo(event)">クリア</button>
+            </div>
+          </summary>
+          <div style="margin-top:14px">
+            <div class="grid2">
+              <div><label class="muted">MTG日時</label><input id="hearingMtgDate" class="hearingInput" data-hearing-field="mtgDate" type="datetime-local" /></div>
+              <div><label class="muted">参加者</label><input id="hearingAttendees" class="hearingInput" data-hearing-field="attendees" placeholder="例：先方2名 / 自社1名" /></div>
+            </div>
+            <div class="grid2" style="margin-top:12px">
+              <div><label class="muted">1. ホットペッパーの月額料金</label><textarea class="hearingInput" data-hearing-field="q1"></textarea></div>
+              <div><label class="muted">2. その他の広告費</label><textarea class="hearingInput" data-hearing-field="q2"></textarea></div>
+              <div><label class="muted">3. 月の来客数</label><textarea class="hearingInput" data-hearing-field="q3"></textarea></div>
+              <div><label class="muted">4. 月の新規客数</label><textarea class="hearingInput" data-hearing-field="q4"></textarea></div>
+              <div><label class="muted">5. 平均客単価</label><textarea class="hearingInput" data-hearing-field="q5"></textarea></div>
+              <div><label class="muted">6. 新規客の流入経路と割合</label><textarea class="hearingInput" data-hearing-field="q6"></textarea></div>
+              <div><label class="muted">7. 1日の施術可能枠と空き状況</label><textarea class="hearingInput" data-hearing-field="q7"></textarea></div>
+              <div><label class="muted">8. メインの客層と集客したい施術</label><textarea class="hearingInput" data-hearing-field="q8"></textarea></div>
+              <div><label class="muted">9. GBP権限と写真素材の有無</label><textarea class="hearingInput" data-hearing-field="q9"></textarea></div>
+              <div><label class="muted">10. 3ヶ月で達成したい目標</label><textarea class="hearingInput" data-hearing-field="q10"></textarea></div>
+              <div><label class="muted">11. 気になってる競合・参考店舗</label><textarea id="h11" class="hearingInput" data-hearing-field="q11" placeholder="参考にしたい店・ベンチマーク・気になる近隣店など"></textarea></div>
+              <div><label class="muted">12. 過去に試した集客施策</label><textarea id="h12" class="hearingInput" data-hearing-field="q12" placeholder="チラシ／SNS広告／他業者経験／うまくいかなかったことなど"></textarea></div>
+            </div>
+            <div style="margin-top:12px"><label class="muted">自由記述（その他メモ）</label><textarea class="hearingInput" data-hearing-field="free"></textarea></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="card">
+        <details id="gbpCheckDetails">
+          <summary class="gbp-summary">
+            <div class="gbp-summary-left">
+              <h2 style="margin:0">GBPチェックシート</h2>
+              <span class="gbp-rate-text" id="gbpRateText">全体達成率: 0/0（0%）</span>
+              <span class="muted" id="gbpUpdatedAt"></span>
+            </div>
+            <div class="gbp-summary-right">
+              <div class="gbp-filter-chips" id="gbpFilterChips">
+                <span class="chip on" data-filter="all" onclick="event.stopPropagation();setGbpFilter('all')">全て</span>
+                <span class="chip" data-filter="必須" onclick="event.stopPropagation();setGbpFilter('必須')">必須</span>
+                <span class="chip" data-filter="推奨" onclick="event.stopPropagation();setGbpFilter('推奨')">推奨</span>
+                <span class="chip" data-filter="発展" onclick="event.stopPropagation();setGbpFilter('発展')">発展</span>
+              </div>
+              <button class="btn" id="copyGbpBtn" onclick="event.stopPropagation();copyGbpCheck(event)">コピー</button>
+            </div>
+          </summary>
+          <div class="gbp-progress-wrap"><div class="gbp-progress-bar" id="gbpProgressBar" style="width:0%"></div></div>
+          <div class="gbp-cat-tabs" id="gbpCatTabs"></div>
+          <div id="gbpItemList"></div>
+        </details>
       </div>
     </div>
   </section>
@@ -812,7 +837,7 @@ function normalizeGbpCheck(gbp){
 }
 function ensureStoreGbpCheck(store){ if(store) store.gbpCheck = normalizeGbpCheck(store.gbpCheck); return store; }
 function normalizeStores(){ stores.forEach(s=>{ ensureStoreExternalLinks(s); ensureStoreHearing(s); ensureStoreGbpCheck(s); }); }
-function saveStores(){ normalizeStores(); localStorage.setItem(LS.stores, JSON.stringify(stores)); renderStores(); renderAnalytics(); renderDiagnosisStores(); }
+function saveStores(){ normalizeStores(); localStorage.setItem(LS.stores, JSON.stringify(stores)); renderStores(); renderAnalytics(); renderDiagnosisStores(); if(typeof renderOperation === 'function') renderOperation(); }
 function saveTemplates(){ localStorage.setItem(LS.templates, JSON.stringify(templates)); renderTemplates(); }
 function saveHistory(){ localStorage.setItem(LS.history, JSON.stringify(editHistory.slice(0,20))); }
 function initBaseUrl(){
@@ -852,7 +877,13 @@ function openConfirm(title, lines, onOk){
 }
 function closeConfirm(){ $('#confirmModalBack').style.display='none'; confirmAction = null; }
 
-document.querySelectorAll('.tabs button').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');['stores','editor','templates','analytics','dashboard','diagnosis','ranking','monthly'].forEach(t=>document.getElementById('tab-'+t).classList.add('hidden'));document.getElementById('tab-'+btn.dataset.tab).classList.remove('hidden');});
+document.querySelectorAll('.tabs button').forEach(btn=>btn.onclick=()=>{
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  ['stores','editor','operation','templates','analytics','dashboard','diagnosis','ranking','monthly'].forEach(t=>document.getElementById('tab-'+t).classList.add('hidden'));
+  document.getElementById('tab-'+btn.dataset.tab).classList.remove('hidden');
+  if(btn.dataset.tab === 'operation') renderOperation();
+});
 
 function renderStores(){
   const q = $('#storeSearch').value?.trim() || '';
@@ -1325,6 +1356,76 @@ window.toggleGbpNote = toggleGbpNote;
 window.onGbpItemChange = onGbpItemChange;
 window.copyGbpCheck = copyGbpCheck;
 
+// ===== 運用タブ =====
+function renderOperation(){
+  const sel = document.getElementById('operationStoreSelect');
+  const emptyCard = document.getElementById('operationEmptyCard');
+  const noStoreCard = document.getElementById('operationNoStoreCard');
+  const panel = document.getElementById('operationPanel');
+  const info = document.getElementById('operationStoreInfo');
+  if(!sel || !emptyCard || !noStoreCard || !panel) return;
+
+  if(stores.length === 0){
+    emptyCard.style.display = '';
+    noStoreCard.style.display = 'none';
+    panel.style.display = 'none';
+    sel.innerHTML = '<option value="">-- 店舗を選択 --</option>';
+    sel.disabled = true;
+    if(info) info.textContent = '';
+    return;
+  }
+  emptyCard.style.display = 'none';
+  sel.disabled = false;
+
+  const opts = ['<option value="">-- 店舗を選択 --</option>']
+    .concat(stores.map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`));
+  sel.innerHTML = opts.join('');
+  sel.value = currentStoreId && stores.some(s=>s.id===currentStoreId) ? currentStoreId : '';
+
+  const store = stores.find(s=>s.id === sel.value);
+  if(store){
+    noStoreCard.style.display = 'none';
+    panel.style.display = '';
+    const parts = [];
+    if(store.status) parts.push(store.status);
+    if(store.author) parts.push(store.author);
+    if(info) info.textContent = parts.length ? `(${parts.join(' / ')})` : '';
+  }else{
+    noStoreCard.style.display = '';
+    panel.style.display = 'none';
+    if(info) info.textContent = '';
+  }
+}
+
+function syncOperationSelect(){
+  const sel = document.getElementById('operationStoreSelect');
+  if(!sel) return;
+  if(stores.length === 0){ renderOperation(); return; }
+  if(sel.value !== (currentStoreId||'')){
+    sel.value = currentStoreId && stores.some(s=>s.id===currentStoreId) ? currentStoreId : '';
+  }
+  const noStoreCard = document.getElementById('operationNoStoreCard');
+  const panel = document.getElementById('operationPanel');
+  const info = document.getElementById('operationStoreInfo');
+  const store = currentStore();
+  if(store){
+    if(noStoreCard) noStoreCard.style.display = 'none';
+    if(panel) panel.style.display = '';
+    if(info){
+      const parts = [];
+      if(store.status) parts.push(store.status);
+      if(store.author) parts.push(store.author);
+      info.textContent = parts.length ? `(${parts.join(' / ')})` : '';
+    }
+  }else{
+    if(noStoreCard) noStoreCard.style.display = '';
+    if(panel) panel.style.display = 'none';
+    if(info) info.textContent = '';
+  }
+}
+window.renderOperation = renderOperation;
+window.syncOperationSelect = syncOperationSelect;
+
 function openEditor(id){
   currentStoreId = id;
   const s = stores.find(v=>v.id===id); if(!s) return;
@@ -1346,6 +1447,7 @@ function openEditor(id){
   renderChecklist(validateStoreDraft(s), s);
   renderHistory();
   updateRoleUi();
+  syncOperationSelect();
 }
 
 function renderQuestionEditor(questions){
@@ -1767,6 +1869,19 @@ $('#bulkApplyTemplateBtn').onclick = ()=>{
 };
 
 document.getElementById('dashGbpSort')?.addEventListener('change', renderDashGbp);
+document.getElementById('operationStoreSelect')?.addEventListener('change', e=>{
+  const id = e.target.value;
+  if(!id){
+    currentStoreId = null;
+    renderOperation();
+    return;
+  }
+  openEditor(id);
+});
+document.getElementById('operationGotoStoresBtn')?.addEventListener('click', ()=>{
+  const btn = document.querySelector('[data-tab="stores"]');
+  if(btn) btn.click();
+});
 
 $('#confirmCancelBtn').onclick = closeConfirm;
 $('#confirmOkBtn').onclick = ()=>{ if(confirmAction) confirmAction(); };
@@ -2211,7 +2326,7 @@ if(stores.length===0){
   const s = {id:uid(),name:'サンプル店舗',status:'下書き',updatedAt:now(),author:'管理者',reviewUrl:'',config:JSON.parse(JSON.stringify(t.config)),metrics:mockMetrics(),url:'',templateId:t.id,qrReady:false,popReady:false,lastResponseAt:'未',externalLinks:[],hearing:defaultHearing()};
   stores.push(s); saveStores();
 }
-initBaseUrl(); renderAuthorOptions(); renderTemplates(); renderStores(); openEditor(stores[0]?.id); renderAnalytics(); renderHistory(); updateRoleUi(); renderDashboard(); renderRanking(); renderMonthly(); renderDiagnosisStores(); renderDiagnosisRankOptions();
+initBaseUrl(); renderAuthorOptions(); renderTemplates(); renderStores(); openEditor(stores[0]?.id); renderAnalytics(); renderHistory(); updateRoleUi(); renderDashboard(); renderRanking(); renderMonthly(); renderDiagnosisStores(); renderDiagnosisRankOptions(); renderOperation();
 </script>
 </body>
 </html>
