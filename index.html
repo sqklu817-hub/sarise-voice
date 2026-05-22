@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>ご来店ありがとうございました | Sarise</title>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
 <style>
 :root {
   --bg: #fffdf8;
@@ -137,6 +138,7 @@ textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; 
 const params = new URLSearchParams(location.search);
 const STORE = params.get('store') || params.get('s') || 'お店';
 const GG_URL = params.get('url') || params.get('u') || '';
+const esc = value => String(value ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
 // templateパラメータから質問セットを選択
 const TEMPLATE_QUESTIONS = {
@@ -167,8 +169,42 @@ const TEMPLATE_QUESTIONS = {
   ]
 };
 
-const templateId = params.get('template') || 'food';
-const QUESTIONS = TEMPLATE_QUESTIONS[templateId] || TEMPLATE_QUESTIONS.food;
+function normalizeQuestion(q, idx){
+  if(Array.isArray(q)){
+    q = {title:q[0], type:q[1], options:q[2]};
+  }
+  if(!q || typeof q !== 'object') return null;
+  const typeMap = {s:'single', m:'multi', t:'text'};
+  const rawType = typeMap[q.type] || q.type;
+  const type = ['single','multi','text'].includes(rawType) ? rawType : 'single';
+  const title = typeof q.title === 'string' && q.title.trim() ? q.title.trim() : `質問${idx+1}`;
+  const options = type === 'text' ? [] : (Array.isArray(q.options) ? q.options.map(v=>String(v).trim()).filter(Boolean) : []);
+  if(type !== 'text' && !options.length) return null;
+  return {id: typeof q.id === 'string' ? q.id : `cq${idx+1}`, title, type, options};
+}
+function fallbackQuestions(){
+  const templateId = params.get('template') || 'food';
+  return TEMPLATE_QUESTIONS[templateId] || TEMPLATE_QUESTIONS.food;
+}
+function resolveQuestions(){
+  const customQuestionsParam = params.get('q');
+  if(customQuestionsParam){
+    try{
+      if(typeof LZString === 'undefined') throw new Error('LZString is not loaded');
+      const decompressed = LZString.decompressFromEncodedURIComponent(customQuestionsParam);
+      const customQuestions = JSON.parse(decompressed);
+      const normalized = Array.isArray(customQuestions)
+        ? customQuestions.map(normalizeQuestion).filter(Boolean)
+        : [];
+      if(normalized.length > 0) return normalized;
+      throw new Error('Invalid custom questions');
+    }catch(e){
+      console.error('カスタム質問の読み込みに失敗。デフォルトテンプレを使用', e);
+    }
+  }
+  return fallbackQuestions();
+}
+const QUESTIONS = resolveQuestions();
 const TOTAL = QUESTIONS.length;
 let ANS = new Array(TOTAL).fill(null);
 
@@ -206,7 +242,7 @@ function buildQCards(){
       body = `<div class="star-options">${[5,4,3,2,1].map((v,j) =>
         `<div class="star-opt" onclick="setStar(${v})">` +
         `<div class="star-opt-stars">${starSymbols[j] || '★'}</div>` +
-        `<div class="star-opt-label">${opts[j] || ''}</div>` +
+        `<div class="star-opt-label">${esc(opts[j] || '')}</div>` +
         `<div class="star-opt-num">${v}点</div>` +
         `<div class="star-check" id="sc${v}"></div>` +
         `</div>`
@@ -220,7 +256,7 @@ function buildQCards(){
       // single / multi はチップ UI
       const isMulti = q.type === 'multi';
       body = `<div class="chips" id="cpg_${n}">${(q.options || []).map(opt =>
-        `<div class="chip" onclick="pickDyn(this,${n},${isMulti})">${opt}</div>`
+        `<div class="chip" onclick="pickDyn(this,${n},${isMulti})">${esc(opt)}</div>`
       ).join('')}</div>`;
       nextDisabled = true;
     }
@@ -231,7 +267,7 @@ function buildQCards(){
 
     return `<div class="card${isFirst ? ' on' : ''}" id="q${n}">` +
            `<div class="ql">${qlLabel}</div>` +
-           `<div class="qh">${q.title}</div>` +
+           `<div class="qh">${esc(q.title)}</div>` +
            `${body}${nav}</div>`;
   }).join('');
 }

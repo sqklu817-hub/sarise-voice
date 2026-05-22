@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Sarise Voice 管理画面</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
 
@@ -108,7 +109,97 @@
     .link-copy-btn{padding:6px 12px;font-size:12px}
     .link-delete-btn{width:28px;height:28px;border:none;background:transparent;color:var(--muted);font-size:18px;line-height:1;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s ease,color .12s ease}
     .link-delete-btn:hover{background:#fef2f2;color:var(--danger)}
-    .toast{position:fixed;right:20px;bottom:20px;background:var(--pri);color:#fff;border-radius:8px;padding:10px 14px;box-shadow:var(--shadow-md);font-size:13px;font-weight:500;z-index:40}
+    .toast{position:fixed;right:20px;bottom:72px;background:var(--pri);color:#fff;border-radius:8px;padding:10px 14px;box-shadow:var(--shadow-md);font-size:13px;font-weight:500;z-index:40;white-space:pre-line;line-height:1.6}
+
+    /* 運用: 店舗カード一覧 / 詳細 */
+    .operation-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+    .operation-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .operation-search{min-width:260px;max-width:360px}
+    .operation-store-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+    .operation-store-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:var(--shadow-sm);cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+    .operation-store-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:var(--line-strong)}
+    .operation-card-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .operation-card-title{font-size:17px;font-weight:700;line-height:1.35;margin-bottom:6px;color:var(--txt)}
+    .operation-flags{display:flex;gap:5px;align-items:center;min-height:14px;flex-shrink:0}
+    .operation-dot{width:9px;height:9px;border-radius:50%;display:inline-block;box-shadow:0 0 0 2px rgba(255,255,255,.9)}
+    .operation-dot.red{background:#dc2626}
+    .operation-dot.orange{background:#f97316}
+    .operation-card-meta{display:grid;gap:8px;margin-top:12px;color:var(--txt-sub);font-size:12px}
+    .operation-card-row{display:flex;justify-content:space-between;gap:10px;align-items:center}
+    .operation-card-sep{height:1px;background:#f3f4f6;margin:2px 0}
+    .operation-card-progress{height:8px;background:var(--line);border-radius:999px;overflow:hidden}
+    .operation-card-progress-bar{height:100%;border-radius:999px;transition:width .25s ease}
+    .operation-card-progress-bar.low{background:#ef4444}
+    .operation-card-progress-bar.mid{background:#f59e0b}
+    .operation-card-progress-bar.high{background:#10b981}
+    .operation-status{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:600;border:1px solid var(--line)}
+    .operation-status.setup{background:#fff7ed;color:#9a3412;border-color:#fed7aa}
+    .operation-status.running{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
+    .operation-status.review{background:#eef2ff;color:#3730a3;border-color:#c7d2fe}
+    .operation-status.ended{background:#f3f4f6;color:#4b5563;border-color:#d1d5db}
+    .operation-detail-title{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .operation-detail-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+    .operation-detail-tabs button{border:1px solid var(--line);background:#fff;color:var(--txt-sub);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer}
+    .operation-detail-tabs button.on{background:var(--pri);border-color:var(--pri);color:#fff}
+    .operation-section{display:none}
+    .operation-section.on{display:block}
+    .operation-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .operation-log{display:grid;gap:8px;margin-top:12px}
+    .operation-log-item{display:flex;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:12px}
+    .sns-row,.task-row,.metric-row{display:grid;gap:8px;align-items:center;margin-bottom:8px}
+    .sns-row{grid-template-columns:170px minmax(0,1fr) auto}
+    .task-row{grid-template-columns:auto minmax(0,1fr) 150px auto}
+    .metric-row{grid-template-columns:120px 130px 110px 120px minmax(180px,1fr) auto}
+    .task-row.done input[type="text"]{text-decoration:line-through;color:var(--muted)}
+    .mini-chart{height:120px;border:1px solid var(--line);border-radius:10px;background:#fff;display:flex;align-items:flex-end;gap:8px;padding:12px;margin-top:12px;overflow:hidden}
+    .mini-chart-bar{flex:1;min-width:18px;max-width:46px;background:linear-gradient(180deg,#fb923c 0%,#f97316 100%);border-radius:6px 6px 0 0;position:relative}
+    .mini-chart-bar span{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);font-size:10px;color:var(--txt-sub);margin-bottom:3px;white-space:nowrap}
+    .voice-url-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:end}
+    .voice-panel{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:18px;align-items:start}
+    .voice-qr-box{border:1px solid var(--line);border-radius:12px;background:#fff;padding:14px;text-align:center;box-shadow:var(--shadow-sm)}
+    .voice-qr{width:200px;min-height:200px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .voice-qr img,.voice-qr canvas{max-width:100%;height:auto}
+    .backup-banner{display:none;position:sticky;top:76px;z-index:9;border:1px solid #fed7aa;background:#fff7ed;color:#9a3412;border-radius:10px;padding:10px 12px;margin-bottom:14px;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;box-shadow:var(--shadow-sm)}
+    .backup-banner.show{display:flex}
+    .data-kv{display:grid;grid-template-columns:180px minmax(0,1fr);gap:8px;font-size:13px;margin-top:10px}
+    .data-kv div{padding:8px 0;border-bottom:1px solid #f3f4f6}
+    .save-status{position:fixed;right:20px;bottom:20px;z-index:50;background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 12px;box-shadow:var(--shadow-md);font-size:12px;font-weight:600;color:var(--txt-sub);display:flex;gap:8px;align-items:center}
+    .save-status.saving{color:var(--txt-sub)}
+    .save-status.saved{color:#047857;border-color:#a7f3d0;background:#ecfdf5}
+    .save-status.error{color:#b91c1c;border-color:#fecaca;background:#fef2f2;border-radius:10px}
+    .save-status button{border:none;background:transparent;color:#b91c1c;font:inherit;text-decoration:underline;cursor:pointer;padding:0}
+    .save-spinner{width:12px;height:12px;border:2px solid #d1d5db;border-top-color:var(--warn);border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .gbp-suggest{border:1px solid #fed7aa;background:#fff7ed;border-radius:10px;padding:12px;margin:12px 0;color:#7c2d12}
+    .gbp-suggest-title{font-weight:700;margin-bottom:8px;color:#9a3412}
+    .gbp-suggest ol{margin:0;padding-left:20px}
+    .gbp-suggest li{margin:6px 0;cursor:pointer}
+    .gbp-suggest li:hover{text-decoration:underline}
+    .gbp-item.flash{animation:gbpFlash 1s ease}
+    @keyframes gbpFlash{0%,100%{background:#fff}20%,70%{background:#ffedd5}}
+    .voice-custom{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
+    .voice-custom-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+    .voice-question{border:1px solid var(--line);border-radius:10px;background:#fff;padding:12px;margin-bottom:10px;box-shadow:var(--shadow-sm)}
+    .voice-question-top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}
+    .voice-option-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin:6px 0}
+    .voice-url-warning{display:none;color:var(--warn);font-size:12px;margin-top:8px;font-weight:600}
+    .voice-url-warning.show{display:block}
+
+    @media (max-width:1024px){
+      .operation-store-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .metric-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .voice-panel{grid-template-columns:1fr}
+    }
+
+    @media (max-width:640px){
+      .operation-store-grid,.operation-form-grid{grid-template-columns:1fr}
+      .operation-search{min-width:0;max-width:none}
+      .operation-actions{width:100%}
+      .operation-actions .btn,.operation-actions input{width:100%}
+      .sns-row,.task-row,.metric-row{grid-template-columns:1fr}
+      .voice-url-row,.data-kv{grid-template-columns:1fr}
+      .voice-qr{width:180px;min-height:180px}
+    }
 
     /* GBPチェックシート */
     .gbp-summary{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;list-style:none}
@@ -259,6 +350,7 @@
       <button data-tab="diagnosis">無料診断</button>
       <button data-tab="ranking">順位トラッキング</button>
       <button data-tab="monthly">月次レポート</button>
+      <button data-tab="data">データ管理</button>
     </nav>
     <div class="sidebar-footer">
       <label class="muted" style="display:block;font-size:11px;margin-bottom:4px">権限</label>
@@ -273,6 +365,13 @@
       </div>
     </header>
     <div class="wrap">
+      <div class="backup-banner" id="backupReminder">
+        <div id="backupReminderText">バックアップをおすすめします</div>
+        <div class="row" style="gap:6px">
+          <button class="btn pri" id="backupNowBtn">今すぐエクスポート</button>
+          <button class="btn" id="backupLaterBtn">後で</button>
+        </div>
+      </div>
 
   <section id="tab-stores">
     <div class="card">
@@ -393,29 +492,144 @@
   </section>
 
   <section id="tab-operation" class="hidden">
-    <div class="card">
-      <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:10px">
-        <h2 style="margin:0">運用</h2>
-        <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
-          <label class="muted" style="width:auto">店舗:</label>
-          <select id="operationStoreSelect" style="min-width:240px"></select>
-          <span class="muted" id="operationStoreInfo"></span>
+    <div id="operationListView">
+      <div class="card">
+        <div class="operation-head">
+          <div>
+            <h2 style="margin:0">運用</h2>
+            <div class="muted">登録店舗をカードで一覧し、クリックして運用詳細を確認できます。</div>
+          </div>
+          <div class="operation-actions">
+            <input id="operationSearch" class="operation-search" placeholder="店舗名・業種で検索" />
+            <button class="btn pri" id="operationAddStoreBtn">+ 新規店舗追加</button>
+          </div>
         </div>
       </div>
+
+      <div class="card" id="operationEmptyCard" style="display:none">
+        <div class="muted" style="margin-bottom:10px">店舗が登録されていません。先に店舗一覧から店舗を追加してください。</div>
+        <button class="btn pri" id="operationGotoStoresBtn">店舗一覧へ</button>
+      </div>
+
+      <div id="operationStoreGrid" class="operation-store-grid"></div>
     </div>
 
-    <div class="card" id="operationEmptyCard" style="display:none">
-      <div class="muted" style="margin-bottom:10px">店舗が登録されていません。先に店舗一覧から店舗を追加してください。</div>
-      <button class="btn pri" id="operationGotoStoresBtn">店舗一覧へ</button>
-    </div>
-
-    <div class="card" id="operationNoStoreCard" style="display:none">
-      <div class="muted">店舗を選択してください</div>
-    </div>
-
-    <div id="operationPanel">
+    <div id="operationDetailView" class="hidden">
       <div class="card">
-        <details id="hearingDetails">
+        <button class="btn" id="operationBackBtn">← 店舗一覧に戻る</button>
+        <div class="operation-head" style="margin-top:14px">
+          <div class="operation-detail-title">
+            <h2 id="operationDetailName" style="margin:0">店舗詳細</h2>
+            <span class="operation-status" id="operationDetailStatus">初期セットアップ中</span>
+          </div>
+          <div class="muted" id="operationDetailUpdated"></div>
+        </div>
+        <div class="operation-detail-tabs" id="operationDetailTabs">
+          <button class="on" data-op-section="basic">基本情報</button>
+          <button data-op-section="voice">Sarise Voice</button>
+          <button data-op-section="progress">進捗ステータス</button>
+          <button data-op-section="hearing">ヒアリングメモ</button>
+          <button data-op-section="gbp">GBPチェックシート</button>
+          <button data-op-section="sns">SNSリンク集</button>
+          <button data-op-section="tasks">タスク管理</button>
+          <button data-op-section="metrics">数値ログ</button>
+        </div>
+      </div>
+
+      <div class="card operation-section on" id="op-section-basic">
+        <h2>基本情報</h2>
+        <div class="operation-form-grid">
+          <div><label class="muted">店舗名</label><input id="opName" data-op-field="name" /></div>
+          <div><label class="muted">業種</label><input id="opIndustry" data-op-field="industry" placeholder="例：美容サロン" /></div>
+          <div style="grid-column:1/-1"><label class="muted">所在地</label><input id="opAddress" data-op-field="address" /></div>
+          <div><label class="muted">契約開始日</label><input id="opContractStart" data-op-field="contractStart" type="date" /></div>
+          <div><label class="muted">契約プラン</label><select id="opContractPlan" data-op-field="contractPlan"><option value="MEOのみ">MEOのみ</option><option value="MEO+LP">MEO+LP</option></select></div>
+          <div><label class="muted">月額料金</label><input id="opMonthlyFee" data-op-field="monthlyFee" type="number" min="0" placeholder="例：30000" /></div>
+          <div><label class="muted">オーナー名</label><input id="opOwnerName" data-op-field="ownerName" /></div>
+          <div><label class="muted">電話番号</label><input id="opPhone" data-op-field="phone" /></div>
+          <div><label class="muted">メールアドレス</label><input id="opEmail" data-op-field="email" type="email" /></div>
+          <div><label class="muted">LINE / Instagram等の連絡手段</label><input id="opContacts" data-op-field="contacts" placeholder="例：LINE @sarise / Instagram DM" /></div>
+        </div>
+      </div>
+
+      <div class="card operation-section" id="op-section-voice">
+        <h2>Sarise Voice</h2>
+        <div class="voice-panel">
+          <div>
+            <label class="muted">クライアント用 Sarise Voice URL</label>
+            <div class="voice-url-row">
+              <input id="opVoiceUrl" placeholder="https://..." />
+              <button class="btn" id="opVoiceCopyBtn">コピー</button>
+              <button class="btn" id="opVoiceOpenBtn">開く</button>
+            </div>
+            <div class="grid2" style="margin-top:14px">
+              <div>
+                <label class="muted">回答数（累計）</label>
+                <input id="opVoiceResponseCount" type="number" min="0" />
+              </div>
+              <div>
+                <label class="muted">最終更新日時</label>
+                <div class="panel" id="opVoiceUpdatedAt" style="min-height:42px;display:flex;align-items:center">-</div>
+              </div>
+            </div>
+            <div style="margin-top:14px">
+              <label class="muted">直近の回答メモ</label>
+              <textarea id="opVoiceMemo" placeholder="最新の回答内容や気になる口コミをメモ"></textarea>
+            </div>
+            <div class="voice-custom">
+              <div class="voice-custom-head">
+                <div>
+                  <h2 style="margin:0">質問項目カスタマイズ</h2>
+                  <div class="muted">店舗ごとにアンケートの質問・選択肢を編集できます。</div>
+                </div>
+                <div class="row" style="gap:8px">
+                  <button class="btn" id="opVoicePreviewBtn">プレビュー</button>
+                  <button class="btn pri" id="opVoiceGenerateUrlBtn">QRコードを生成</button>
+                </div>
+              </div>
+              <div class="row" style="align-items:flex-end;margin-bottom:12px">
+                <div style="max-width:240px">
+                  <label class="muted">ベーステンプレ</label>
+                  <select id="opVoiceTemplateSelect">
+                    <option value="restaurant">飲食店</option>
+                    <option value="salon">美容サロン</option>
+                    <option value="clinic">整体院</option>
+                    <option value="blank">空白から始める</option>
+                  </select>
+                </div>
+                <button class="btn" id="opVoiceLoadTemplateBtn">テンプレを読み込む</button>
+                <button class="btn" id="opVoiceAddQuestionBtn">+ 質問を追加</button>
+              </div>
+              <div id="opVoiceQuestionList"></div>
+              <div class="voice-url-warning" id="opVoiceUrlWarning"></div>
+            </div>
+          </div>
+          <div class="voice-qr-box">
+            <div class="voice-qr" id="opVoiceQr"><div class="muted">URLを入力するとQRコードを表示します</div></div>
+            <button class="btn" id="opVoiceQrDownloadBtn">QRコードをダウンロード</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card operation-section" id="op-section-progress">
+        <h2>進捗ステータス</h2>
+        <div class="grid2">
+          <div>
+            <label class="muted">フェーズ</label>
+            <select id="opProgressPhase">
+              <option value="初期セットアップ中">初期セットアップ中</option>
+              <option value="運用中">運用中</option>
+              <option value="成果確認中">成果確認中</option>
+              <option value="契約終了">契約終了</option>
+            </select>
+          </div>
+        </div>
+        <div class="operation-log" id="opStatusHistory"></div>
+      </div>
+
+      <div class="operation-section" id="op-section-hearing">
+        <div class="card">
+          <details id="hearingDetails" open>
           <summary class="row" style="justify-content:space-between;gap:10px;cursor:pointer">
             <div class="row" style="gap:10px">
               <h2 style="margin:0">ヒアリングメモ</h2>
@@ -450,9 +664,11 @@
           </div>
         </details>
       </div>
+      </div>
 
+      <div class="operation-section" id="op-section-gbp">
       <div class="card">
-        <details id="gbpCheckDetails">
+        <details id="gbpCheckDetails" open>
           <summary class="gbp-summary">
             <div class="gbp-summary-left">
               <h2 style="margin:0">GBPチェックシート</h2>
@@ -470,9 +686,40 @@
             </div>
           </summary>
           <div class="gbp-progress-wrap"><div class="gbp-progress-bar" id="gbpProgressBar" style="width:0%"></div></div>
+          <div id="gbpSuggestionBox"></div>
           <div class="gbp-cat-tabs" id="gbpCatTabs"></div>
           <div id="gbpItemList"></div>
         </details>
+      </div>
+      </div>
+
+      <div class="card operation-section" id="op-section-sns">
+        <div class="row" style="justify-content:space-between">
+          <h2 style="margin:0">SNSリンク集</h2>
+          <button class="btn" id="opAddOtherLinkBtn">その他を追加</button>
+        </div>
+        <div id="opSnsLinks" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card operation-section" id="op-section-tasks">
+        <div class="row" style="justify-content:space-between">
+          <h2 style="margin:0">タスク管理</h2>
+        </div>
+        <h3>今週やること</h3>
+        <div id="opTasksWeek"></div>
+        <button class="btn" onclick="addOperationTask('week')">+ タスク追加</button>
+        <h3 style="margin-top:18px">次回MTGまでにやること</h3>
+        <div id="opTasksNext"></div>
+        <button class="btn" onclick="addOperationTask('next')">+ タスク追加</button>
+      </div>
+
+      <div class="card operation-section" id="op-section-metrics">
+        <div class="row" style="justify-content:space-between">
+          <h2 style="margin:0">数値ログ</h2>
+          <button class="btn" id="opAddMetricBtn">+ 行を追加</button>
+        </div>
+        <div id="opMetricRows" style="margin-top:12px"></div>
+        <div class="mini-chart" id="opReviewChart"></div>
       </div>
     </div>
   </section>
@@ -653,6 +900,28 @@
       <button class="btn pri" onclick="printReport()">印刷・PDF保存</button>
     </div>
   </section>
+
+  <section id="tab-data" class="hidden">
+    <div class="card">
+      <h2>データ管理</h2>
+      <div class="muted">店舗データ、ヒアリングメモ、GBPチェック、SNS、タスク、数値ログ、順位、診断結果、月次レポートなどをJSONでバックアップできます。</div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn pri" id="exportAllDataBtn">全データをエクスポート</button>
+        <button class="btn" id="importDataBtn">ファイルからインポート</button>
+        <input id="importDataFile" type="file" accept="application/json,.json" class="hidden" />
+      </div>
+      <div class="muted" id="lastExportText" style="margin-top:10px">最終エクスポート日時：未実施</div>
+    </div>
+    <div class="card">
+      <h2>バックアップ内容</h2>
+      <div class="data-kv">
+        <div class="muted">店舗一覧</div><div id="dataStoreCount">-</div>
+        <div class="muted">順位トラッキング</div><div id="dataRankingCount">-</div>
+        <div class="muted">診断結果</div><div id="dataDiagnosisCount">-</div>
+        <div class="muted">月次レポート</div><div id="dataReportCount">-</div>
+      </div>
+    </div>
+  </section>
 </div>
   </main>
 </div>
@@ -668,14 +937,82 @@
   </div>
 </div>
 
+<div class="save-status saved" id="saveStatus">
+  <span id="saveStatusIcon">✓</span>
+  <span id="saveStatusText">保存済み</span>
+  <button id="saveRetryBtn" style="display:none">リトライ</button>
+</div>
+
 <script>
-const LS = { stores:'sv_stores_v2', templates:'sv_templates_v2', draft:'sv_editor_draft_v2', undo:'sv_editor_undo_v2', history:'sv_edit_history_v2', baseUrl:'sv_base_url_v1' };
+const LS = { stores:'sv_stores_v2', templates:'sv_templates_v2', draft:'sv_editor_draft_v2', undo:'sv_editor_undo_v2', history:'sv_edit_history_v2', baseUrl:'sv_base_url_v1', lastExport:'sv_last_export_at_v1', bannerDismissedDate:'sv_backup_banner_dismissed_date_v1' };
 const now = () => new Date().toISOString().slice(0,16).replace('T',' ');
 const uid = () => Math.random().toString(36).slice(2,8);
 const enc = obj => btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
 const dec = str => JSON.parse(decodeURIComponent(escape(atob(str))));
 const $ = s => document.querySelector(s);
 const DEFAULT_BASE_URL = 'https://sqklu817-hub.github.io/sarise-voice/';
+const nativeStorageSetItem = Storage.prototype.setItem;
+let saveStatusTimer;
+let lastFailedStorageWrite = null;
+function setSaveStatus(state, text){
+  const box = document.getElementById('saveStatus');
+  const icon = document.getElementById('saveStatusIcon');
+  const label = document.getElementById('saveStatusText');
+  const retry = document.getElementById('saveRetryBtn');
+  if(!box || !icon || !label || !retry) return;
+  box.className = `save-status ${state}`;
+  retry.style.display = state === 'error' ? '' : 'none';
+  if(state === 'saving'){
+    icon.innerHTML = '<span class="save-spinner"></span>';
+    label.textContent = text || '保存中...';
+  }else{
+    icon.textContent = state === 'error' ? '⚠' : '✓';
+    label.textContent = text || '保存済み';
+  }
+}
+function markSavePending(){
+  clearTimeout(saveStatusTimer);
+  setSaveStatus('saving', '保存中...');
+}
+function markSaveDone(){
+  const stamp = new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  setSaveStatus('saved', `保存済み（${stamp}）`);
+}
+function openStorageQuotaModal(){
+  openConfirm(
+    'ブラウザの保存容量が上限に達しています',
+    ['古いデータの削除またはエクスポートをおすすめします。'],
+    ()=>{
+      closeConfirm();
+      document.querySelector('[data-tab="data"]')?.click();
+    },
+    'データ管理を開く'
+  );
+}
+function retryLastStorageWrite(){
+  if(!lastFailedStorageWrite) return;
+  try{
+    nativeStorageSetItem.call(localStorage, lastFailedStorageWrite.key, lastFailedStorageWrite.value);
+    lastFailedStorageWrite = null;
+    markSaveDone();
+  }catch(e){
+    setSaveStatus('error', '保存に失敗しました');
+  }
+}
+Storage.prototype.setItem = function(key, value){
+  try{
+    const result = nativeStorageSetItem.call(this, key, value);
+    if(this === localStorage) markSaveDone();
+    return result;
+  }catch(e){
+    if(this === localStorage){
+      lastFailedStorageWrite = {key, value};
+      setSaveStatus('error', '保存に失敗しました');
+      if(e?.name === 'QuotaExceededError' || e?.code === 22) openStorageQuotaModal();
+    }
+    throw e;
+  }
+};
 const LINK_TYPE_LABELS = {
   googlemap: 'Googleマップ',
   hp: '公式HP',
@@ -799,7 +1136,8 @@ stores = stores.map(s=>({
   externalLinks:Array.isArray(s.externalLinks)?s.externalLinks:[],
   hearing:normalizeHearing(s.hearing),
   gbpCheck:normalizeGbpCheck(s.gbpCheck)
-}));
+})).map(normalizeOperationStore);
+localStorage.setItem(LS.stores, JSON.stringify(stores));
 let currentStoreId = null;
 let previewMode = 'pc';
 let autoSaveTimer;
@@ -807,6 +1145,10 @@ let hearingAutoSaveTimer;
 let selectedStoreIds = new Set();
 let confirmAction = null;
 let editHistory = JSON.parse(localStorage.getItem(LS.history)||'[]');
+let operationView = 'list';
+let activeOperationSection = 'basic';
+let operationSearchTerm = '';
+let voiceQuestionSaveTimer;
 
 function ensureStoreExternalLinks(store){ if(store && !Array.isArray(store.externalLinks)) store.externalLinks = []; return store; }
 function defaultHearing(){ return {mtgDate:'',attendees:'',q1:'',q2:'',q3:'',q4:'',q5:'',q6:'',q7:'',q8:'',q9:'',q10:'',q11:'',q12:'',free:'',savedAt:''}; }
@@ -836,8 +1178,117 @@ function normalizeGbpCheck(gbp){
   return { items, lastUpdated: typeof gbp.lastUpdated === 'string' ? gbp.lastUpdated : '' };
 }
 function ensureStoreGbpCheck(store){ if(store) store.gbpCheck = normalizeGbpCheck(store.gbpCheck); return store; }
-function normalizeStores(){ stores.forEach(s=>{ ensureStoreExternalLinks(s); ensureStoreHearing(s); ensureStoreGbpCheck(s); }); }
-function saveStores(){ normalizeStores(); localStorage.setItem(LS.stores, JSON.stringify(stores)); renderStores(); renderAnalytics(); renderDiagnosisStores(); if(typeof renderOperation === 'function') renderOperation(); }
+function defaultSnsLinks(){
+  return { gbp:'', instagram:'', tiktok:'', homepage:'', hotpepper:'', other:[] };
+}
+function normalizeSnsLinks(links){
+  const base = defaultSnsLinks();
+  if(links && typeof links === 'object'){
+    Object.assign(base, links);
+    base.other = Array.isArray(links.other) ? links.other.map(v=>({
+      label: typeof v?.label === 'string' ? v.label : '',
+      url: typeof v?.url === 'string' ? v.url : ''
+    })) : [];
+  }
+  return base;
+}
+function migrateSnsFromExternalLinks(store, sns){
+  if(!store || !Array.isArray(store.externalLinks)) return sns;
+  store.externalLinks.forEach(link=>{
+    const url = link?.url || '';
+    if(!url) return;
+    if(link.type === 'googlemap' && !sns.gbp) sns.gbp = url;
+    if(link.type === 'instagram' && !sns.instagram) sns.instagram = url;
+    if(link.type === 'hp' && !sns.homepage) sns.homepage = url;
+    if(link.type === 'hotpepper' && !sns.hotpepper) sns.hotpepper = url;
+  });
+  return sns;
+}
+function defaultOperationTasks(){
+  return { week:[], next:[] };
+}
+function normalizeOperationTasks(tasks){
+  const base = defaultOperationTasks();
+  if(tasks && typeof tasks === 'object'){
+    ['week','next'].forEach(key=>{
+      base[key] = Array.isArray(tasks[key]) ? tasks[key].map(t=>({
+        id: t?.id || uid(),
+        done: !!t?.done,
+        text: typeof t?.text === 'string' ? t.text : '',
+        due: typeof t?.due === 'string' ? t.due : ''
+      })) : [];
+    });
+  }
+  return base;
+}
+function normalizeNumericLogs(logs){
+  return Array.isArray(logs) ? logs.map(row=>({
+    id: row?.id || uid(),
+    month: typeof row?.month === 'string' ? row.month : '',
+    rank: typeof row?.rank === 'string' || typeof row?.rank === 'number' ? String(row.rank) : '',
+    reviews: typeof row?.reviews === 'string' || typeof row?.reviews === 'number' ? String(row.reviews) : '',
+    reservations: typeof row?.reservations === 'string' || typeof row?.reservations === 'number' ? String(row.reservations) : '',
+    note: typeof row?.note === 'string' ? row.note : ''
+  })) : [];
+}
+function defaultSariseVoice(store=null){
+  return { url: store?.url || '', responseCount:'', memo:'', updatedAt:'', customQuestions:[] };
+}
+function normalizeCustomQuestions(questions){
+  if(!Array.isArray(questions)) return [];
+  return questions.map((q,idx)=>({
+    id: typeof q?.id === 'string' && q.id ? q.id : uid(),
+    title: typeof q?.title === 'string' ? q.title : `質問${idx+1}`,
+    type: ['single','multi','text'].includes(q?.type) ? q.type : 'single',
+    options: Array.isArray(q?.options) ? q.options.filter(v=>typeof v === 'string').map(v=>String(v)) : []
+  })).map(q=>q.type === 'text' ? {...q, options:[]} : q);
+}
+function normalizeSariseVoice(value, store=null){
+  const base = defaultSariseVoice(store);
+  if(value && typeof value === 'object'){
+    base.url = typeof value.url === 'string' ? value.url : base.url;
+    base.responseCount = typeof value.responseCount === 'string' || typeof value.responseCount === 'number' ? String(value.responseCount) : '';
+    base.memo = typeof value.memo === 'string' ? value.memo : '';
+    base.updatedAt = typeof value.updatedAt === 'string' ? value.updatedAt : '';
+    base.customQuestions = normalizeCustomQuestions(value.customQuestions);
+  }
+  return base;
+}
+function normalizeOperationStore(store){
+  if(!store) return store;
+  store.industry = typeof store.industry === 'string' ? store.industry : (store.category || '');
+  store.address = typeof store.address === 'string' ? store.address : '';
+  store.contractStart = typeof store.contractStart === 'string' ? store.contractStart : '';
+  store.contractPlan = ['MEOのみ','MEO+LP'].includes(store.contractPlan) ? store.contractPlan : 'MEOのみ';
+  store.monthlyFee = typeof store.monthlyFee === 'string' || typeof store.monthlyFee === 'number' ? String(store.monthlyFee) : '';
+  store.ownerName = typeof store.ownerName === 'string' ? store.ownerName : '';
+  store.phone = typeof store.phone === 'string' ? store.phone : '';
+  store.email = typeof store.email === 'string' ? store.email : '';
+  store.contacts = typeof store.contacts === 'string' ? store.contacts : '';
+  store.progressPhase = ['初期セットアップ中','運用中','成果確認中','契約終了'].includes(store.progressPhase)
+    ? store.progressPhase
+    : (store.status === '公開中' ? '運用中' : '初期セットアップ中');
+  store.statusHistory = Array.isArray(store.statusHistory) ? store.statusHistory.map(h=>({
+    date: typeof h?.date === 'string' ? h.date : now(),
+    status: typeof h?.status === 'string' ? h.status : store.progressPhase
+  })) : [{date:store.updatedAt||now(), status:store.progressPhase}];
+  store.sns_links = migrateSnsFromExternalLinks(store, normalizeSnsLinks(store.sns_links));
+  store.tasks = normalizeOperationTasks(store.tasks);
+  store.numericLogs = normalizeNumericLogs(store.numericLogs);
+  store.sariseVoice = normalizeSariseVoice(store.sariseVoice, store);
+  return store;
+}
+function normalizeStores(){ stores.forEach(s=>{ ensureStoreExternalLinks(s); ensureStoreHearing(s); ensureStoreGbpCheck(s); normalizeOperationStore(s); }); }
+function saveStores(){
+  normalizeStores();
+  localStorage.setItem(LS.stores, JSON.stringify(stores));
+  renderStores();
+  renderAnalytics();
+  renderDiagnosisStores();
+  const activeInOperationDetail = !!document.activeElement?.closest?.('#operationDetailView');
+  if(typeof renderOperation === 'function' && !activeInOperationDetail) renderOperation();
+}
+function saveStoresQuiet(){ normalizeStores(); localStorage.setItem(LS.stores, JSON.stringify(stores)); }
 function saveTemplates(){ localStorage.setItem(LS.templates, JSON.stringify(templates)); renderTemplates(); }
 function saveHistory(){ localStorage.setItem(LS.history, JSON.stringify(editHistory.slice(0,20))); }
 function initBaseUrl(){
@@ -869,20 +1320,39 @@ function pushHistory(action, detail){
   renderHistory();
 }
 
-function openConfirm(title, lines, onOk){
+function openConfirm(title, lines, onOk, okLabel='実行する'){
   $('#confirmTitle').textContent = title;
   $('#confirmBody').innerHTML = `<ul>${lines.map(v=>`<li>${v}</li>`).join('')}</ul>`;
   confirmAction = onOk;
+  $('#confirmCancelBtn').style.display = '';
+  $('#confirmOkBtn').textContent = okLabel;
+  $('#confirmOkBtn').className = 'btn warn';
   $('#confirmModalBack').style.display='flex';
 }
-function closeConfirm(){ $('#confirmModalBack').style.display='none'; confirmAction = null; }
+function openNotice(title, lines){
+  $('#confirmTitle').textContent = title;
+  $('#confirmBody').innerHTML = `<ul>${lines.map(v=>`<li>${v}</li>`).join('')}</ul>`;
+  confirmAction = closeConfirm;
+  $('#confirmCancelBtn').style.display = 'none';
+  $('#confirmOkBtn').textContent = 'OK';
+  $('#confirmOkBtn').className = 'btn pri';
+  $('#confirmModalBack').style.display='flex';
+}
+function closeConfirm(){
+  $('#confirmModalBack').style.display='none';
+  confirmAction = null;
+  $('#confirmCancelBtn').style.display = '';
+  $('#confirmOkBtn').textContent = '実行する';
+  $('#confirmOkBtn').className = 'btn warn';
+}
 
 document.querySelectorAll('.tabs button').forEach(btn=>btn.onclick=()=>{
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
-  ['stores','editor','operation','templates','analytics','dashboard','diagnosis','ranking','monthly'].forEach(t=>document.getElementById('tab-'+t).classList.add('hidden'));
+  ['stores','editor','operation','templates','analytics','dashboard','diagnosis','ranking','monthly','data'].forEach(t=>document.getElementById('tab-'+t).classList.add('hidden'));
   document.getElementById('tab-'+btn.dataset.tab).classList.remove('hidden');
   if(btn.dataset.tab === 'operation') renderOperation();
+  if(btn.dataset.tab === 'data') renderDataManagement();
 });
 
 function renderStores(){
@@ -941,6 +1411,7 @@ function createStoreFromTemplate(){
   const s = {id:uid(),name:`新規店舗-${stores.length+1}`,status:'下書き',updatedAt:now(),author:'',reviewUrl:'',config:JSON.parse(JSON.stringify(t.config)),url:'',metrics:mockMetrics(),templateId:t.id,qrReady:false,popReady:false,lastResponseAt:'未',externalLinks:[],hearing:defaultHearing()};
   stores.unshift(s); saveStores(); openEditor(s.id);
   pushHistory('新規作成', `テンプレ「${t.name}」から店舗作成`);
+  showBackupToast();
 }
 
 function duplicateStore(id){ if(!canEdit()) return; const s = stores.find(v=>v.id===id); const c = JSON.parse(JSON.stringify(s)); c.id=uid(); c.name += '（複製）'; c.status='下書き'; c.updatedAt=now(); c.url=''; stores.unshift(c); saveStores(); pushHistory('複製', `${s.name} を複製`); }
@@ -962,14 +1433,17 @@ function escapeHtml(value){
 function encodedArg(value){ return encodeURIComponent(String(value ?? '')); }
 function getLinkLabel(link){ return link.type === 'custom' ? (link.label || 'その他') : (LINK_TYPE_LABELS[link.type] || link.type); }
 function getLinkIconText(link){ return getLinkLabel(link).slice(0,2).toUpperCase(); }
-function showToast(message){
+function showToast(message, duration=2200){
   const old = document.querySelector('.toast');
   if(old) old.remove();
   const el = document.createElement('div');
   el.className = 'toast';
   el.textContent = message;
   document.body.appendChild(el);
-  setTimeout(()=>el.remove(), 1800);
+  setTimeout(()=>el.remove(), duration);
+}
+function showBackupToast(){
+  showToast('✓ 店舗を追加しました\n💾 データが増えました。バックアップをおすすめします', 4200);
 }
 function renderLinks(store=currentStore()){
   const list = $('#linkList');
@@ -1175,6 +1649,50 @@ function gbpProgressClass(pct){
   if(pct < 70) return 'mid';
   return 'high';
 }
+function getGbpNextItems(store){
+  if(!store) return [];
+  ensureStoreGbpCheck(store);
+  const priorityOrder = {'必須':1,'推奨':2,'発展':3};
+  return GBP_CHECK_ITEMS
+    .filter(it=>!store.gbpCheck.items[it.id]?.checked)
+    .sort((a,b)=>(priorityOrder[a.priority]||9)-(priorityOrder[b.priority]||9) || a.id-b.id)
+    .slice(0,3);
+}
+function renderGbpSuggestions(store=currentStore()){
+  const box = document.getElementById('gbpSuggestionBox');
+  if(!box) return;
+  if(!store){ box.innerHTML = ''; return; }
+  const next = getGbpNextItems(store);
+  if(!next.length){
+    box.innerHTML = `<div class="gbp-suggest">
+      <div class="gbp-suggest-title">🎉 全項目完了！素晴らしい運用です</div>
+      <div>このまま継続して、月次レポートでクライアントに成果を共有しましょう。</div>
+    </div>`;
+    return;
+  }
+  box.innerHTML = `<div class="gbp-suggest">
+    <div class="gbp-suggest-title">🔥 次にやるべき3つ</div>
+    <ol>
+      ${next.map(it=>`<li onclick="focusGbpItem(${it.id})">【${escapeHtml(it.priority)}】${escapeHtml(it.title)}（${escapeHtml(it.category)}）</li>`).join('')}
+    </ol>
+  </div>`;
+}
+function focusGbpItem(id){
+  const item = GBP_CHECK_ITEMS.find(it=>it.id === id);
+  if(!item) return;
+  gbpFilter = 'all';
+  gbpActiveCategory = item.category;
+  renderGbpCheck();
+  setTimeout(()=>{
+    const el = document.getElementById(`gbpItem_${id}`);
+    if(!el) return;
+    el.scrollIntoView({behavior:'smooth', block:'center'});
+    el.classList.add('flash');
+    const input = el.querySelector('input,select,textarea');
+    if(input) input.focus({preventScroll:true});
+    setTimeout(()=>el.classList.remove('flash'), 1100);
+  }, 50);
+}
 function renderGbpCheck(store=currentStore()){
   const list = document.getElementById('gbpItemList');
   const rateText = document.getElementById('gbpRateText');
@@ -1195,6 +1713,7 @@ function renderGbpCheck(store=currentStore()){
     bar.style.width = '0%';
     bar.className = 'gbp-progress-bar low';
     if(updatedAt) updatedAt.textContent = '';
+    renderGbpSuggestions(null);
     tabs.innerHTML = '';
     list.innerHTML = '<div class="muted">店舗を選択してください</div>';
     return;
@@ -1210,6 +1729,7 @@ function renderGbpCheck(store=currentStore()){
       ? `最終更新: ${new Date(store.gbpCheck.lastUpdated).toLocaleString('ja-JP')}`
       : '';
   }
+  renderGbpSuggestions(store);
 
   tabs.innerHTML = GBP_CATEGORIES.map(cat=>{
     const catItems = getGbpFilteredItems().filter(it=>it.category === cat);
@@ -1227,7 +1747,7 @@ function renderGbpCheck(store=currentStore()){
     const prCls = GBP_PRIORITY_CLASS[it.priority] || '';
     const prIcon = GBP_PRIORITY_ICON[it.priority] || '';
     const noteOpen = !!(state.note && state.note.trim());
-    return `<div class="gbp-item">
+    return `<div class="gbp-item" id="gbpItem_${it.id}">
       <div class="gbp-item-row">
         <div class="gbp-item-check">
           <input type="checkbox" ${state.checked?'checked':''} ${canEdit()?'':'disabled'} onchange="onGbpItemChange(${it.id},'checked',this.checked)" />
@@ -1355,76 +1875,686 @@ window.setGbpCategory = setGbpCategory;
 window.toggleGbpNote = toggleGbpNote;
 window.onGbpItemChange = onGbpItemChange;
 window.copyGbpCheck = copyGbpCheck;
+window.focusGbpItem = focusGbpItem;
 
 // ===== 運用タブ =====
 function renderOperation(){
-  const sel = document.getElementById('operationStoreSelect');
+  const listView = document.getElementById('operationListView');
+  const detailView = document.getElementById('operationDetailView');
   const emptyCard = document.getElementById('operationEmptyCard');
-  const noStoreCard = document.getElementById('operationNoStoreCard');
-  const panel = document.getElementById('operationPanel');
-  const info = document.getElementById('operationStoreInfo');
-  if(!sel || !emptyCard || !noStoreCard || !panel) return;
+  const grid = document.getElementById('operationStoreGrid');
+  if(!listView || !detailView || !emptyCard || !grid) return;
 
   if(stores.length === 0){
+    operationView = 'list';
+    listView.classList.remove('hidden');
+    detailView.classList.add('hidden');
     emptyCard.style.display = '';
-    noStoreCard.style.display = 'none';
-    panel.style.display = 'none';
-    sel.innerHTML = '<option value="">-- 店舗を選択 --</option>';
-    sel.disabled = true;
-    if(info) info.textContent = '';
+    grid.innerHTML = '';
     return;
   }
   emptyCard.style.display = 'none';
-  sel.disabled = false;
 
-  const opts = ['<option value="">-- 店舗を選択 --</option>']
-    .concat(stores.map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`));
-  sel.innerHTML = opts.join('');
-  sel.value = currentStoreId && stores.some(s=>s.id===currentStoreId) ? currentStoreId : '';
-
-  const store = stores.find(s=>s.id === sel.value);
-  if(store){
-    noStoreCard.style.display = 'none';
-    panel.style.display = '';
-    const parts = [];
-    if(store.status) parts.push(store.status);
-    if(store.author) parts.push(store.author);
-    if(info) info.textContent = parts.length ? `(${parts.join(' / ')})` : '';
+  const store = currentStore();
+  if(operationView === 'detail' && store){
+    listView.classList.add('hidden');
+    detailView.classList.remove('hidden');
+    renderOperationDetail(store);
   }else{
-    noStoreCard.style.display = '';
-    panel.style.display = 'none';
-    if(info) info.textContent = '';
+    operationView = 'list';
+    listView.classList.remove('hidden');
+    detailView.classList.add('hidden');
+    renderOperationCards();
   }
 }
 
 function syncOperationSelect(){
-  const sel = document.getElementById('operationStoreSelect');
-  if(!sel) return;
-  if(stores.length === 0){ renderOperation(); return; }
-  if(sel.value !== (currentStoreId||'')){
-    sel.value = currentStoreId && stores.some(s=>s.id===currentStoreId) ? currentStoreId : '';
-  }
-  const noStoreCard = document.getElementById('operationNoStoreCard');
-  const panel = document.getElementById('operationPanel');
-  const info = document.getElementById('operationStoreInfo');
+  if(document.getElementById('tab-operation') && !document.getElementById('tab-operation').classList.contains('hidden')) renderOperation();
+}
+function operationStatusClass(status){
+  if(status === '運用中') return 'running';
+  if(status === '成果確認中') return 'review';
+  if(status === '契約終了') return 'ended';
+  return 'setup';
+}
+function formatDateTimeLabel(value){
+  if(!value) return '-';
+  const d = new Date(String(value).replace(' ','T'));
+  return Number.isNaN(d.getTime()) ? value : d.toLocaleString('ja-JP');
+}
+function parseStoreDate(value){
+  if(!value) return null;
+  const d = new Date(String(value).replace(' ','T'));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+function daysSince(date){
+  if(!date) return null;
+  const today = new Date();
+  const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return Math.max(0, Math.floor((startToday - startDate) / (1000*60*60*24)));
+}
+function getStoreTaskSummary(store){
+  normalizeOperationStore(store);
+  const tasks = [...(store.tasks.week || []), ...(store.tasks.next || [])];
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const incomplete = tasks.filter(t=>!t.done);
+  const overdue = incomplete.some(t=>{
+    if(!t.due) return false;
+    const due = new Date(t.due);
+    due.setHours(0,0,0,0);
+    return due < today;
+  });
+  return {incomplete:incomplete.length, overdue};
+}
+function getStoreContactSummary(store){
+  const hearingDate = parseStoreDate(store.hearing?.mtgDate);
+  const updatedDate = parseStoreDate(store.updatedAt);
+  const dates = [hearingDate, updatedDate].filter(Boolean);
+  const latest = dates.length ? new Date(Math.max(...dates.map(d=>d.getTime()))) : null;
+  const days = daysSince(latest);
+  return {date:latest, days, label:days === null ? '-' : (days === 0 ? '今日' : `${days}日前`)};
+}
+function renderOperationCards(){
+  const grid = document.getElementById('operationStoreGrid');
+  if(!grid) return;
+  const q = (operationSearchTerm || document.getElementById('operationSearch')?.value || '').trim().toLowerCase();
+  const rows = stores.filter(s=>{
+    normalizeOperationStore(s);
+    const haystack = `${s.name||''} ${s.industry||''} ${s.category||''}`.toLowerCase();
+    return !q || haystack.includes(q);
+  });
+  grid.innerHTML = rows.map(s=>{
+    const gbp = calcGbpRate(s, 'all');
+    const gbpCls = gbpProgressClass(gbp.pct);
+    const tasks = getStoreTaskSummary(s);
+    const contact = getStoreContactSummary(s);
+    const stale = contact.days !== null && contact.days >= 30;
+    const flags = `${stale?'<span class="operation-dot red" title="最終接触から30日以上"></span>':''}${tasks.overdue?'<span class="operation-dot orange" title="期日超過タスクあり"></span>':''}`;
+    return `
+    <div class="operation-store-card" onclick="openOperationDetail('${s.id}')">
+      <div class="operation-card-top">
+        <div class="operation-card-title">${escapeHtml(s.name || '未設定店舗')}</div>
+        <div class="operation-flags">${flags}</div>
+      </div>
+      <div class="muted">${escapeHtml(s.industry || s.category || '業種未設定')}</div>
+      <div class="operation-card-meta">
+        <div class="operation-card-sep"></div>
+        <div class="operation-card-row"><span>状態</span><span><span class="operation-status ${operationStatusClass(s.progressPhase)}">${escapeHtml(s.progressPhase)}</span> ／ <strong>${escapeHtml(s.contractPlan || 'MEOのみ')}</strong></span></div>
+        <div class="operation-card-sep"></div>
+        <div class="operation-card-row"><span>GBP達成率</span><strong>${gbp.done}/${gbp.total}（${gbp.pct}%）</strong></div>
+        <div class="operation-card-progress"><div class="operation-card-progress-bar ${gbpCls}" style="width:${gbp.pct}%"></div></div>
+        <div class="operation-card-sep"></div>
+        <div class="operation-card-row"><span>未完了タスク</span><strong>${tasks.incomplete}件</strong></div>
+        <div class="operation-card-row"><span>最終接触</span><strong>${escapeHtml(contact.label)}</strong></div>
+        <div class="operation-card-sep"></div>
+        <div class="operation-card-row"><span>最終更新</span><span>${escapeHtml(s.updatedAt || '-')}</span></div>
+      </div>
+    </div>
+  `;
+  }).join('') || '<div class="card muted" style="grid-column:1/-1">該当する店舗がありません</div>';
+}
+function openOperationDetail(id){
+  currentStoreId = id;
+  operationView = 'detail';
+  activeOperationSection = activeOperationSection || 'basic';
   const store = currentStore();
   if(store){
-    if(noStoreCard) noStoreCard.style.display = 'none';
-    if(panel) panel.style.display = '';
-    if(info){
-      const parts = [];
-      if(store.status) parts.push(store.status);
-      if(store.author) parts.push(store.author);
-      info.textContent = parts.length ? `(${parts.join(' / ')})` : '';
-    }
-  }else{
-    if(noStoreCard) noStoreCard.style.display = '';
-    if(panel) panel.style.display = 'none';
-    if(info) info.textContent = '';
+    normalizeOperationStore(store);
+    renderHearing(store);
+    renderGbpCheck(store);
   }
+  renderOperation();
+}
+function showOperationList(){
+  operationView = 'list';
+  renderOperation();
+}
+function setOperationSection(section){
+  activeOperationSection = section;
+  document.querySelectorAll('#operationDetailTabs button').forEach(btn=>btn.classList.toggle('on', btn.dataset.opSection === section));
+  document.querySelectorAll('.operation-section').forEach(el=>el.classList.toggle('on', el.id === `op-section-${section}`));
+}
+function renderOperationDetail(store=currentStore()){
+  if(!store) return;
+  normalizeOperationStore(store);
+  const detailName = document.getElementById('operationDetailName');
+  const detailStatus = document.getElementById('operationDetailStatus');
+  const detailUpdated = document.getElementById('operationDetailUpdated');
+  if(detailName) detailName.textContent = store.name || '未設定店舗';
+  if(detailStatus){
+    detailStatus.textContent = store.progressPhase;
+    detailStatus.className = `operation-status ${operationStatusClass(store.progressPhase)}`;
+  }
+  if(detailUpdated) detailUpdated.textContent = `最終更新: ${store.updatedAt || '-'}`;
+  document.querySelectorAll('[data-op-field]').forEach(input=>{
+    const field = input.dataset.opField;
+    input.value = store[field] || '';
+    input.disabled = !canEdit();
+  });
+  const phase = document.getElementById('opProgressPhase');
+  if(phase){
+    phase.value = store.progressPhase;
+    phase.disabled = !canEdit();
+  }
+  renderOperationStatusHistory(store);
+  renderOperationSariseVoice(store);
+  renderOperationSnsLinks(store);
+  renderOperationTasks(store);
+  renderOperationMetrics(store);
+  renderHearing(store);
+  renderGbpCheck(store);
+  setOperationSection(activeOperationSection);
+}
+function renderOperationStatusHistory(store=currentStore()){
+  const box = document.getElementById('opStatusHistory');
+  if(!box || !store) return;
+  box.innerHTML = store.statusHistory.slice().reverse().map(h=>`
+    <div class="operation-log-item">
+      <span>${escapeHtml(formatDateTimeLabel(h.date))}</span>
+      <strong>${escapeHtml(h.status)}</strong>
+    </div>
+  `).join('') || '<div class="muted">ステータス変更履歴はまだありません</div>';
+}
+function persistOperationStore(store=currentStore(), opt={renderList:false, renderDetailHeader:true}){
+  if(!store) return;
+  normalizeOperationStore(store);
+  store.updatedAt = now();
+  saveStoresQuiet();
+  renderStores();
+  renderDashboard();
+  renderDiagnosisStores();
+  if(opt.renderList) renderOperationCards();
+  if(opt.renderDetailHeader){
+    const detailName = document.getElementById('operationDetailName');
+    const detailStatus = document.getElementById('operationDetailStatus');
+    const detailUpdated = document.getElementById('operationDetailUpdated');
+    if(detailName) detailName.textContent = store.name || '未設定店舗';
+    if(detailStatus){
+      detailStatus.textContent = store.progressPhase;
+      detailStatus.className = `operation-status ${operationStatusClass(store.progressPhase)}`;
+    }
+    if(detailUpdated) detailUpdated.textContent = `最終更新: ${store.updatedAt || '-'}`;
+  }
+}
+function updateOperationField(field, value){
+  if(!canEdit()) return;
+  const store = currentStore();
+  if(!store) return;
+  store[field] = value;
+  persistOperationStore(store);
+}
+function updateOperationPhase(value){
+  if(!canEdit()) return;
+  const store = currentStore();
+  if(!store || store.progressPhase === value) return;
+  store.progressPhase = value;
+  store.statusHistory.push({date:now(), status:value});
+  persistOperationStore(store);
+  renderOperationStatusHistory(store);
+}
+function renderOperationSariseVoice(store=currentStore()){
+  if(!store) return;
+  normalizeOperationStore(store);
+  const voice = store.sariseVoice;
+  const url = document.getElementById('opVoiceUrl');
+  const count = document.getElementById('opVoiceResponseCount');
+  const memo = document.getElementById('opVoiceMemo');
+  const updated = document.getElementById('opVoiceUpdatedAt');
+  if(url){ url.value = voice.url || ''; url.disabled = !canEdit(); }
+  if(count){ count.value = voice.responseCount || ''; count.disabled = !canEdit(); }
+  if(memo){ memo.value = voice.memo || ''; memo.disabled = !canEdit(); }
+  if(updated) updated.textContent = voice.updatedAt ? formatDateTimeLabel(voice.updatedAt) : '-';
+  renderSariseVoiceQr(voice.url || '');
+  updateVoiceUrlWarning(voice.url || '');
+  renderVoiceQuestionEditor(store);
+}
+function renderSariseVoiceQr(url){
+  const box = document.getElementById('opVoiceQr');
+  if(!box) return;
+  box.innerHTML = '';
+  if(!url){
+    box.innerHTML = '<div class="muted">URLを入力するとQRコードを表示します</div>';
+    return;
+  }
+  if(typeof QRCode === 'undefined'){
+    box.innerHTML = '<div class="muted">QRコードライブラリを読み込み中です</div>';
+    return;
+  }
+  new QRCode(box, { text:url, width:200, height:200, correctLevel:QRCode.CorrectLevel.M });
+}
+function updateSariseVoiceField(field, value){
+  if(!canEdit()) return;
+  const store = currentStore(); if(!store) return;
+  normalizeOperationStore(store);
+  store.sariseVoice[field] = value;
+  store.sariseVoice.updatedAt = new Date().toISOString();
+  persistOperationStore(store);
+  const updated = document.getElementById('opVoiceUpdatedAt');
+  if(updated) updated.textContent = formatDateTimeLabel(store.sariseVoice.updatedAt);
+  if(field === 'url'){
+    renderSariseVoiceQr(value);
+    updateVoiceUrlWarning(value);
+  }
+}
+async function copySariseVoiceUrl(){
+  const url = currentStore()?.sariseVoice?.url || '';
+  if(!url) return alert('URLが入力されていません');
+  try{
+    await navigator.clipboard.writeText(url);
+  }catch(e){
+    const tmp = document.createElement('textarea');
+    tmp.value = url;
+    tmp.style.position = 'fixed';
+    tmp.style.left = '-9999px';
+    document.body.appendChild(tmp);
+    tmp.select();
+    document.execCommand('copy');
+    tmp.remove();
+  }
+  const btn = document.getElementById('opVoiceCopyBtn');
+  if(btn){
+    const old = btn.textContent;
+    btn.textContent = 'コピー済み';
+    setTimeout(()=>{ btn.textContent = old; }, 1600);
+  }
+}
+function openSariseVoiceUrl(){
+  openUrlIfValid(currentStore()?.sariseVoice?.url || '');
+}
+function downloadSariseVoiceQr(){
+  const store = currentStore();
+  const url = store?.sariseVoice?.url || '';
+  if(!store || !url) return alert('URLが入力されていません');
+  const box = document.getElementById('opVoiceQr');
+  const canvas = box?.querySelector('canvas');
+  const img = box?.querySelector('img');
+  const dataUrl = canvas ? canvas.toDataURL('image/png') : img?.src;
+  if(!dataUrl) return alert('QRコードを生成できませんでした');
+  const a = document.createElement('a');
+  const safeName = String(store.name || 'store').replace(/[\\/:*?"<>|]/g, '_');
+  a.href = dataUrl;
+  a.download = `sariseVoiceQR_${safeName}.png`;
+  a.click();
+}
+function cloneVoiceTemplate(key){
+  if(key === 'blank') return [];
+  const src = QUESTION_TEMPLATES[key] || QUESTION_TEMPLATES.restaurant || [];
+  return src.map(q=>({id:uid(), title:q.title, type:q.type, options:[...(q.options||[])]}));
+}
+function ensureVoiceQuestions(store=currentStore()){
+  if(!store) return [];
+  normalizeOperationStore(store);
+  return store.sariseVoice.customQuestions;
+}
+function getVoiceQuestionsForUrl(store=currentStore()){
+  if(!store) return [];
+  const qs = ensureVoiceQuestions(store);
+  return normalizeCustomQuestions(qs).filter(q=>q.title.trim()).map(q=>({
+    id:q.id,
+    title:q.title.trim(),
+    type:q.type,
+    options:q.type === 'text' ? [] : q.options.map(o=>o.trim()).filter(Boolean)
+  })).filter(q=>q.type === 'text' || q.options.length > 0);
+}
+function renderVoiceQuestionEditor(store=currentStore()){
+  const list = document.getElementById('opVoiceQuestionList');
+  if(!list || !store) return;
+  const questions = ensureVoiceQuestions(store);
+  list.innerHTML = questions.map((q,idx)=>`
+    <div class="voice-question" data-voice-qid="${q.id}">
+      <div class="voice-question-top">
+        <strong>質問${idx+1}</strong>
+        <div class="row" style="gap:6px">
+          <button class="btn" ${idx===0?'disabled':''} onclick="moveVoiceQuestion(${idx},-1)">↑</button>
+          <button class="btn" ${idx===questions.length-1?'disabled':''} onclick="moveVoiceQuestion(${idx},1)">↓</button>
+          <button class="btn warn" onclick="removeVoiceQuestion(${idx})">削除</button>
+        </div>
+      </div>
+      <div class="grid2">
+        <div><label class="muted">質問文</label><input value="${escapeHtml(q.title)}" ${canEdit()?'':'disabled'} oninput="updateVoiceQuestion(${idx},'title',this.value)" /></div>
+        <div><label class="muted">形式</label><select ${canEdit()?'':'disabled'} onchange="updateVoiceQuestion(${idx},'type',this.value)">
+          <option value="single" ${q.type==='single'?'selected':''}>単一選択</option>
+          <option value="multi" ${q.type==='multi'?'selected':''}>複数選択</option>
+          <option value="text" ${q.type==='text'?'selected':''}>自由記述</option>
+        </select></div>
+      </div>
+      <div class="voice-options" ${q.type==='text'?'style="display:none"':''}>
+        <label class="muted" style="display:block;margin-top:10px">選択肢</label>
+        ${(q.options||[]).map((opt,optIdx)=>`
+          <div class="voice-option-row">
+            <input value="${escapeHtml(opt)}" ${canEdit()?'':'disabled'} oninput="updateVoiceOption(${idx},${optIdx},this.value)" />
+            <button class="btn warn" onclick="removeVoiceOption(${idx},${optIdx})">×</button>
+          </div>
+        `).join('')}
+        <button class="btn" onclick="addVoiceOption(${idx})">+ 選択肢を追加</button>
+      </div>
+    </div>
+  `).join('') || '<div class="muted">質問がありません。「質問を追加」またはテンプレ読み込みを行ってください。</div>';
+}
+function scheduleVoiceQuestionSave(){
+  const store = currentStore(); if(!store) return;
+  markSavePending();
+  clearTimeout(voiceQuestionSaveTimer);
+  voiceQuestionSaveTimer = setTimeout(()=>{
+    normalizeOperationStore(store);
+    store.sariseVoice.updatedAt = new Date().toISOString();
+    store.updatedAt = now();
+    saveStoresQuiet();
+    const updated = document.getElementById('opVoiceUpdatedAt');
+    if(updated) updated.textContent = formatDateTimeLabel(store.sariseVoice.updatedAt);
+    renderStores();
+  }, 500);
+}
+function updateVoiceQuestion(index, field, value){
+  if(!canEdit()) return;
+  const qs = ensureVoiceQuestions();
+  if(!qs[index]) return;
+  qs[index][field] = value;
+  if(field === 'type' && value === 'text') qs[index].options = [];
+  if(field === 'type' && value !== 'text' && !qs[index].options.length) qs[index].options = ['選択肢1','選択肢2'];
+  scheduleVoiceQuestionSave();
+  if(field === 'type') renderVoiceQuestionEditor();
+}
+function updateVoiceOption(qIndex, optIndex, value){
+  if(!canEdit()) return;
+  const qs = ensureVoiceQuestions();
+  if(!qs[qIndex]) return;
+  qs[qIndex].options[optIndex] = value;
+  scheduleVoiceQuestionSave();
+}
+function addVoiceQuestion(){
+  if(!canEdit()) return;
+  ensureVoiceQuestions().push({id:uid(), title:'新しい質問', type:'single', options:['選択肢1','選択肢2']});
+  scheduleVoiceQuestionSave();
+  renderVoiceQuestionEditor();
+}
+function removeVoiceQuestion(index){
+  if(!canEdit()) return;
+  ensureVoiceQuestions().splice(index,1);
+  scheduleVoiceQuestionSave();
+  renderVoiceQuestionEditor();
+}
+function moveVoiceQuestion(index, dir){
+  if(!canEdit()) return;
+  const qs = ensureVoiceQuestions();
+  const next = index + dir;
+  if(next < 0 || next >= qs.length) return;
+  [qs[index], qs[next]] = [qs[next], qs[index]];
+  scheduleVoiceQuestionSave();
+  renderVoiceQuestionEditor();
+}
+function addVoiceOption(qIndex){
+  if(!canEdit()) return;
+  const qs = ensureVoiceQuestions();
+  if(!qs[qIndex]) return;
+  qs[qIndex].options.push('新しい選択肢');
+  scheduleVoiceQuestionSave();
+  renderVoiceQuestionEditor();
+}
+function removeVoiceOption(qIndex, optIndex){
+  if(!canEdit()) return;
+  const qs = ensureVoiceQuestions();
+  if(!qs[qIndex]) return;
+  qs[qIndex].options.splice(optIndex,1);
+  scheduleVoiceQuestionSave();
+  renderVoiceQuestionEditor();
+}
+function loadVoiceQuestionTemplate(){
+  if(!canEdit()) return;
+  const key = document.getElementById('opVoiceTemplateSelect')?.value || 'restaurant';
+  const store = currentStore(); if(!store) return;
+  const apply = ()=>{
+    store.sariseVoice.customQuestions = cloneVoiceTemplate(key);
+    scheduleVoiceQuestionSave();
+    renderVoiceQuestionEditor(store);
+    closeConfirm();
+  };
+  if((store.sariseVoice.customQuestions || []).length){
+    openConfirm('テンプレを読み込む', ['現在の質問項目は上書きされます。よろしいですか？'], apply, '読み込む');
+  }else{
+    apply();
+  }
+}
+function getAppBaseUrl(){
+  const base = getBaseUrl();
+  return base.split('?')[0];
+}
+function buildCustomVoiceUrl(store=currentStore()){
+  if(!store) return '';
+  if(typeof LZString === 'undefined'){
+    alert('LZStringライブラリを読み込めませんでした。ネットワーク接続を確認してください。');
+    return '';
+  }
+  const questions = getVoiceQuestionsForUrl(store);
+  if(!questions.length){
+    alert('質問項目を1件以上設定してください。');
+    return '';
+  }
+  const compactType = {single:'s', multi:'m', text:'t'};
+  const compactQuestions = questions.map(q=>[q.title, compactType[q.type] || q.type, q.options]);
+  const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(compactQuestions));
+  const url = new URL(getAppBaseUrl(), location.href);
+  url.search = '';
+  url.searchParams.set('store', store.name || '');
+  if(store.reviewUrl) url.searchParams.set('url', store.reviewUrl);
+  url.searchParams.set('q', compressed);
+  return url.toString();
+}
+function updateVoiceUrlWarning(url){
+  const warn = document.getElementById('opVoiceUrlWarning');
+  if(!warn) return;
+  if(url && url.length > 800){
+    warn.textContent = `URLが長くなっています（${url.length}文字）。質問数や選択肢を減らすことをおすすめします。`;
+    warn.classList.add('show');
+  }else if(url && url.length > 500){
+    warn.textContent = `URL長: ${url.length}文字（目安500文字を超えていますが利用可能です）`;
+    warn.classList.add('show');
+  }else{
+    warn.textContent = '';
+    warn.classList.remove('show');
+  }
+}
+function generateCustomVoiceUrl(){
+  if(!canEdit()) return;
+  const store = currentStore(); if(!store) return;
+  const url = buildCustomVoiceUrl(store);
+  if(!url) return;
+  store.sariseVoice.url = url;
+  store.sariseVoice.updatedAt = new Date().toISOString();
+  persistOperationStore(store);
+  renderOperationSariseVoice(store);
+  updateVoiceUrlWarning(url);
+}
+function previewCustomVoiceUrl(){
+  const store = currentStore(); if(!store) return;
+  const url = buildCustomVoiceUrl(store);
+  if(!url) return;
+  updateVoiceUrlWarning(url);
+  window.open(url, '_blank', 'noopener');
+}
+function renderOperationSnsLinks(store=currentStore()){
+  const box = document.getElementById('opSnsLinks');
+  if(!box || !store) return;
+  normalizeOperationStore(store);
+  const labels = [
+    ['gbp','GBPビジネスプロフィールURL'],
+    ['instagram','Instagram'],
+    ['tiktok','TikTok'],
+    ['homepage','ホームページ'],
+    ['hotpepper','ホットペッパー']
+  ];
+  const fixedRows = labels.map(([key,label])=>`
+    <div class="sns-row">
+      <label class="muted">${label}</label>
+      <input value="${escapeHtml(store.sns_links[key] || '')}" ${canEdit()?'':'disabled'} oninput="updateOperationSns('${key}',this.value)" />
+      <button class="btn" onclick="openOperationLink('${key}')">開く</button>
+    </div>
+  `).join('');
+  const otherRows = store.sns_links.other.map((link,index)=>`
+    <div class="sns-row">
+      <input placeholder="ラベル" value="${escapeHtml(link.label)}" ${canEdit()?'':'disabled'} oninput="updateOperationOtherLink(${index},'label',this.value)" />
+      <input placeholder="URL" value="${escapeHtml(link.url)}" ${canEdit()?'':'disabled'} oninput="updateOperationOtherLink(${index},'url',this.value)" />
+      <div class="row" style="gap:6px">
+        <button class="btn" onclick="openOperationOtherLink(${index})">開く</button>
+        <button class="btn warn" onclick="removeOperationOtherLink(${index})">削除</button>
+      </div>
+    </div>
+  `).join('');
+  box.innerHTML = fixedRows + otherRows;
+}
+function updateOperationSns(key, value){
+  if(!canEdit()) return;
+  const store = currentStore(); if(!store) return;
+  store.sns_links[key] = value;
+  persistOperationStore(store, {renderDetailHeader:true});
+}
+function updateOperationOtherLink(index, key, value){
+  if(!canEdit()) return;
+  const store = currentStore(); if(!store) return;
+  store.sns_links.other[index][key] = value;
+  persistOperationStore(store, {renderDetailHeader:true});
+}
+function openUrlIfValid(url){
+  if(!url) return alert('URLが入力されていません');
+  const href = /^https?:\/\//.test(url) ? url : `https://${url}`;
+  window.open(href, '_blank', 'noopener');
+}
+function openOperationLink(key){
+  const store = currentStore(); if(!store) return;
+  openUrlIfValid(store.sns_links[key]);
+}
+function openOperationOtherLink(index){
+  const store = currentStore(); if(!store) return;
+  openUrlIfValid(store.sns_links.other[index]?.url);
+}
+function addOperationOtherLink(){
+  if(!canEdit()) return;
+  const store = currentStore(); if(!store) return;
+  store.sns_links.other.push({label:'', url:''});
+  persistOperationStore(store);
+  renderOperationSnsLinks(store);
+}
+function removeOperationOtherLink(index){
+  if(!canEdit()) return;
+  const store = currentStore(); if(!store) return;
+  store.sns_links.other.splice(index,1);
+  persistOperationStore(store);
+  renderOperationSnsLinks(store);
+}
+function renderOperationTasks(store=currentStore()){
+  if(!store) return;
+  ['week','next'].forEach(key=>{
+    const box = document.getElementById(key === 'week' ? 'opTasksWeek' : 'opTasksNext');
+    if(!box) return;
+    box.innerHTML = store.tasks[key].map((task,index)=>`
+      <div class="task-row ${task.done?'done':''}">
+        <input type="checkbox" ${task.done?'checked':''} ${canEdit()?'':'disabled'} onchange="updateOperationTask('${key}',${index},'done',this.checked)" />
+        <input type="text" placeholder="タスク内容" value="${escapeHtml(task.text)}" ${canEdit()?'':'disabled'} oninput="updateOperationTask('${key}',${index},'text',this.value)" />
+        <input type="date" value="${escapeHtml(task.due)}" ${canEdit()?'':'disabled'} onchange="updateOperationTask('${key}',${index},'due',this.value)" />
+        <button class="btn warn" onclick="removeOperationTask('${key}',${index})">削除</button>
+      </div>
+    `).join('') || '<div class="muted" style="margin-bottom:8px">タスクはまだありません</div>';
+  });
+}
+function addOperationTask(key){
+  if(!canEdit()) return;
+  const store = currentStore(); if(!store) return;
+  store.tasks[key].push({id:uid(), done:false, text:'', due:''});
+  persistOperationStore(store);
+  renderOperationTasks(store);
+}
+function updateOperationTask(key, index, field, value){
+  if(!canEdit()) return;
+  const store = currentStore(); if(!store) return;
+  store.tasks[key][index][field] = field === 'done' ? !!value : value;
+  persistOperationStore(store);
+  if(field === 'done') renderOperationTasks(store);
+}
+function removeOperationTask(key, index){
+  if(!canEdit()) return;
+  const store = currentStore(); if(!store) return;
+  store.tasks[key].splice(index,1);
+  persistOperationStore(store);
+  renderOperationTasks(store);
+}
+function renderOperationMetrics(store=currentStore()){
+  const box = document.getElementById('opMetricRows');
+  const chart = document.getElementById('opReviewChart');
+  if(!box || !chart || !store) return;
+  box.innerHTML = store.numericLogs.map((row,index)=>`
+    <div class="metric-row">
+      <input type="month" value="${escapeHtml(row.month)}" ${canEdit()?'':'disabled'} onchange="updateOperationMetric(${index},'month',this.value)" />
+      <input type="number" min="0" placeholder="GBP順位" value="${escapeHtml(row.rank)}" ${canEdit()?'':'disabled'} oninput="updateOperationMetric(${index},'rank',this.value)" />
+      <input type="number" min="0" placeholder="口コミ数" value="${escapeHtml(row.reviews)}" ${canEdit()?'':'disabled'} oninput="updateOperationMetric(${index},'reviews',this.value)" />
+      <input type="number" min="0" placeholder="新規予約数" value="${escapeHtml(row.reservations)}" ${canEdit()?'':'disabled'} oninput="updateOperationMetric(${index},'reservations',this.value)" />
+      <input placeholder="備考" value="${escapeHtml(row.note)}" ${canEdit()?'':'disabled'} oninput="updateOperationMetric(${index},'note',this.value)" />
+      <button class="btn warn" onclick="removeOperationMetric(${index})">削除</button>
+    </div>
+  `).join('') || '<div class="muted">数値ログはまだありません</div>';
+  const data = store.numericLogs.filter(r=>r.month && Number(r.reviews) >= 0);
+  const max = Math.max(1, ...data.map(r=>Number(r.reviews)||0));
+  chart.innerHTML = data.length ? data.slice(-12).map(r=>`
+    <div class="mini-chart-bar" style="height:${Math.max(6, Math.round((Number(r.reviews)||0)/max*100))}%"><span>${escapeHtml(r.reviews || '0')}</span></div>
+  `).join('') : '<div class="muted">口コミ数推移は、数値ログを入力すると表示されます</div>';
+}
+function addOperationMetric(){
+  if(!canEdit()) return;
+  const store = currentStore(); if(!store) return;
+  const month = new Date().toISOString().slice(0,7);
+  store.numericLogs.push({id:uid(), month, rank:'', reviews:'', reservations:'', note:''});
+  persistOperationStore(store);
+  renderOperationMetrics(store);
+}
+function updateOperationMetric(index, field, value){
+  if(!canEdit()) return;
+  const store = currentStore(); if(!store) return;
+  store.numericLogs[index][field] = value;
+  persistOperationStore(store);
+  if(field === 'reviews' || field === 'month') renderOperationMetrics(store);
+}
+function removeOperationMetric(index){
+  if(!canEdit()) return;
+  const store = currentStore(); if(!store) return;
+  store.numericLogs.splice(index,1);
+  persistOperationStore(store);
+  renderOperationMetrics(store);
+}
+function createOperationStore(){
+  if(!canEdit()) return alert('閲覧者は新規作成できません');
+  const t = templates[0] || {id:'', config:templateConfig('汎用')};
+  const s = normalizeOperationStore({id:uid(),name:`新規店舗-${stores.length+1}`,status:'下書き',updatedAt:now(),author:'',reviewUrl:'',config:JSON.parse(JSON.stringify(t.config)),url:'',metrics:mockMetrics(),templateId:t.id,qrReady:false,popReady:false,lastResponseAt:'未',externalLinks:[],hearing:defaultHearing(),gbpCheck:defaultGbpCheck()});
+  stores.unshift(s);
+  saveStores();
+  openOperationDetail(s.id);
+  pushHistory('新規作成', '運用画面から店舗を作成');
+  showBackupToast();
 }
 window.renderOperation = renderOperation;
 window.syncOperationSelect = syncOperationSelect;
+window.openOperationDetail = openOperationDetail;
+window.updateOperationSns = updateOperationSns;
+window.updateOperationOtherLink = updateOperationOtherLink;
+window.openOperationLink = openOperationLink;
+window.openOperationOtherLink = openOperationOtherLink;
+window.removeOperationOtherLink = removeOperationOtherLink;
+window.addOperationTask = addOperationTask;
+window.updateOperationTask = updateOperationTask;
+window.removeOperationTask = removeOperationTask;
+window.updateOperationMetric = updateOperationMetric;
+window.removeOperationMetric = removeOperationMetric;
+window.updateSariseVoiceField = updateSariseVoiceField;
+window.copySariseVoiceUrl = copySariseVoiceUrl;
+window.openSariseVoiceUrl = openSariseVoiceUrl;
+window.downloadSariseVoiceQr = downloadSariseVoiceQr;
+window.updateVoiceQuestion = updateVoiceQuestion;
+window.updateVoiceOption = updateVoiceOption;
+window.addVoiceQuestion = addVoiceQuestion;
+window.removeVoiceQuestion = removeVoiceQuestion;
+window.moveVoiceQuestion = moveVoiceQuestion;
+window.addVoiceOption = addVoiceOption;
+window.removeVoiceOption = removeVoiceOption;
 
 function openEditor(id){
   currentStoreId = id;
@@ -1803,7 +2933,7 @@ async function bulkCopyUrls(){
 function updateRoleUi(){
   const viewer = activeRole()==='閲覧者';
   const editor = activeRole()==='編集者';
-  ['#createStoreBtn','#quickCreateStoreBtn','#quickDuplicateBtn','#saveDraftBtn','#applyBtn','#addQuestionBtn','#applyQuestionTemplateBtn','#addLinkBtn','#newLinkType','#newLinkLabel','#newLinkUrl','#clearHearingBtn'].forEach(sel=>$(sel).disabled = viewer);
+  ['#createStoreBtn','#quickCreateStoreBtn','#quickDuplicateBtn','#operationAddStoreBtn','#saveDraftBtn','#applyBtn','#addQuestionBtn','#applyQuestionTemplateBtn','#addLinkBtn','#newLinkType','#newLinkLabel','#newLinkUrl','#clearHearingBtn','#opAddOtherLinkBtn','#opAddMetricBtn','#opVoiceUrl','#opVoiceResponseCount','#opVoiceMemo','#opVoiceTemplateSelect','#opVoiceLoadTemplateBtn','#opVoiceAddQuestionBtn','#opVoiceGenerateUrlBtn'].forEach(sel=>{ const el=$(sel); if(el) el.disabled = viewer; });
   document.querySelectorAll('.hearingInput').forEach(el=>el.disabled = viewer);
   $('#publishBtn').disabled = !canPublish();
   ['#bulkPublishBtn','#bulkDraftBtn','#bulkApplyTemplateBtn'].forEach(sel=>$(sel).disabled = !canBulkPublish());
@@ -1827,6 +2957,7 @@ $('#quickCreateStoreBtn').onclick = ()=>{
   const t = templates[0];
   const s = {id:uid(),name:`新規店舗-${stores.length+1}`,status:'下書き',updatedAt:now(),author:'',reviewUrl:'',config:JSON.parse(JSON.stringify(t.config)),url:'',metrics:mockMetrics(),templateId:t.id,qrReady:false,popReady:false,lastResponseAt:'未',externalLinks:[],hearing:defaultHearing()};
   stores.unshift(s); saveStores(); openEditor(s.id); document.querySelector('[data-tab="editor"]').click();
+  showBackupToast();
 };
 $('#quickDuplicateBtn').onclick = ()=>{
   const targets = selectedStores();
@@ -1869,19 +3000,56 @@ $('#bulkApplyTemplateBtn').onclick = ()=>{
 };
 
 document.getElementById('dashGbpSort')?.addEventListener('change', renderDashGbp);
-document.getElementById('operationStoreSelect')?.addEventListener('change', e=>{
-  const id = e.target.value;
-  if(!id){
-    currentStoreId = null;
-    renderOperation();
-    return;
-  }
-  openEditor(id);
+document.getElementById('operationSearch')?.addEventListener('input', e=>{
+  operationSearchTerm = e.target.value;
+  renderOperationCards();
 });
+document.getElementById('operationAddStoreBtn')?.addEventListener('click', createOperationStore);
+document.getElementById('operationBackBtn')?.addEventListener('click', showOperationList);
 document.getElementById('operationGotoStoresBtn')?.addEventListener('click', ()=>{
   const btn = document.querySelector('[data-tab="stores"]');
   if(btn) btn.click();
 });
+document.querySelectorAll('#operationDetailTabs button').forEach(btn=>btn.addEventListener('click', ()=>setOperationSection(btn.dataset.opSection)));
+document.querySelectorAll('[data-op-field]').forEach(input=>{
+  input.addEventListener('input', ()=>updateOperationField(input.dataset.opField, input.value));
+  input.addEventListener('change', ()=>updateOperationField(input.dataset.opField, input.value));
+});
+function shouldTrackSaveInput(el){
+  if(!el || el.type === 'file') return false;
+  return !!el.closest('#operationDetailView,#tab-editor,#gbpItemList,#hearingDetails,#linkList,#questionList');
+}
+document.addEventListener('input', e=>{
+  if(shouldTrackSaveInput(e.target)) markSavePending();
+}, true);
+document.addEventListener('change', e=>{
+  if(shouldTrackSaveInput(e.target)) markSavePending();
+}, true);
+document.getElementById('opProgressPhase')?.addEventListener('change', e=>updateOperationPhase(e.target.value));
+document.getElementById('opAddOtherLinkBtn')?.addEventListener('click', addOperationOtherLink);
+document.getElementById('opAddMetricBtn')?.addEventListener('click', addOperationMetric);
+document.getElementById('opVoiceUrl')?.addEventListener('input', e=>updateSariseVoiceField('url', e.target.value));
+document.getElementById('opVoiceResponseCount')?.addEventListener('input', e=>updateSariseVoiceField('responseCount', e.target.value));
+document.getElementById('opVoiceMemo')?.addEventListener('input', e=>updateSariseVoiceField('memo', e.target.value));
+document.getElementById('opVoiceCopyBtn')?.addEventListener('click', copySariseVoiceUrl);
+document.getElementById('opVoiceOpenBtn')?.addEventListener('click', openSariseVoiceUrl);
+document.getElementById('opVoiceQrDownloadBtn')?.addEventListener('click', downloadSariseVoiceQr);
+document.getElementById('opVoiceLoadTemplateBtn')?.addEventListener('click', loadVoiceQuestionTemplate);
+document.getElementById('opVoiceAddQuestionBtn')?.addEventListener('click', addVoiceQuestion);
+document.getElementById('opVoiceGenerateUrlBtn')?.addEventListener('click', generateCustomVoiceUrl);
+document.getElementById('opVoicePreviewBtn')?.addEventListener('click', previewCustomVoiceUrl);
+document.getElementById('exportAllDataBtn')?.addEventListener('click', exportAllData);
+document.getElementById('importDataBtn')?.addEventListener('click', ()=>document.getElementById('importDataFile')?.click());
+document.getElementById('importDataFile')?.addEventListener('change', e=>{
+  handleImportFile(e.target.files?.[0]);
+  e.target.value = '';
+});
+document.getElementById('backupNowBtn')?.addEventListener('click', exportAllData);
+document.getElementById('backupLaterBtn')?.addEventListener('click', ()=>{
+  localStorage.setItem(LS.bannerDismissedDate, new Date().toISOString().slice(0,10));
+  document.getElementById('backupReminder')?.classList.remove('show');
+});
+document.getElementById('saveRetryBtn')?.addEventListener('click', retryLastStorageWrite);
 
 $('#confirmCancelBtn').onclick = closeConfirm;
 $('#confirmOkBtn').onclick = ()=>{ if(confirmAction) confirmAction(); };
@@ -1897,6 +3065,190 @@ const LS_DASHBOARD = 'sv_dashboard_v1';
 const LS_RANKING = 'sv_ranking_v1';
 const LS_REPORT = 'sv_report_v1';
 const LS_DIAGNOSIS = 'sv_diagnosis_v1';
+
+// --- データ管理 ---
+function parseStorageJson(key, fallback){
+  try{ return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
+  catch(e){ return fallback; }
+}
+function collectLocalStorageSnapshot(){
+  const data = {};
+  for(let i=0;i<localStorage.length;i++){
+    const key = localStorage.key(i);
+    data[key] = localStorage.getItem(key);
+  }
+  return data;
+}
+function buildBackupPayload(exportedAt){
+  const storeData = parseStorageJson(LS.stores, []);
+  const byStore = mapper => Object.fromEntries(storeData.map(s=>[s.id || s.name || uid(), mapper(s)]));
+  return {
+    app:'Sarise Voice',
+    exportedAt,
+    version:'1.0',
+    data:{
+      stores:storeData,
+      hearings:byStore(s=>s.hearing || {}),
+      gbpChecks:byStore(s=>s.gbpCheck || {}),
+      snsLinks:byStore(s=>s.sns_links || {}),
+      tasks:byStore(s=>s.tasks || {}),
+      metrics:byStore(s=>({ numericLogs:s.numericLogs || [], analytics:s.metrics || {}, sariseVoice:s.sariseVoice || {} })),
+      ranking:parseStorageJson(LS_RANKING, []),
+      diagnosis:parseStorageJson(LS_DIAGNOSIS, []),
+      monthlyReports:parseStorageJson(LS_REPORT, []),
+      dashboard:parseStorageJson(LS_DASHBOARD, {}),
+      templates:parseStorageJson(LS.templates, []),
+      history:parseStorageJson(LS.history, []),
+      settings:{ baseUrl:localStorage.getItem(LS.baseUrl) || DEFAULT_BASE_URL, lastExportAt:exportedAt },
+      localStorage:collectLocalStorageSnapshot()
+    }
+  };
+}
+function formatBackupDate(date=new Date()){
+  const pad = n => String(n).padStart(2,'0');
+  return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}`;
+}
+function formatDisplayDate(value){
+  if(!value) return '未実施';
+  const d = new Date(value);
+  if(Number.isNaN(d.getTime())) return value;
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function downloadBackupFile(prefix, exportedAt, updateLastExport=false){
+  if(updateLastExport) localStorage.setItem(LS.lastExport, exportedAt);
+  const payload = buildBackupPayload(exportedAt);
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${prefix}_${formatBackupDate(new Date(exportedAt))}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+function exportAllData(){
+  const exportedAt = new Date().toISOString();
+  downloadBackupFile('sarise_voice_backup', exportedAt, true);
+  renderDataManagement();
+  renderBackupReminder();
+}
+function exportAutoBackupBeforeImport(){
+  downloadBackupFile('sarise_voice_auto_backup', new Date().toISOString(), false);
+}
+function isSariseBackup(payload){
+  return !!(
+    payload &&
+    typeof payload === 'object' &&
+    payload.data &&
+    (payload.app === 'Sarise Voice' || Array.isArray(payload.data.stores) || payload.data.localStorage?.[LS.stores])
+  );
+}
+function clearSariseStorage(){
+  const keys = [];
+  for(let i=0;i<localStorage.length;i++){
+    const key = localStorage.key(i);
+    if(key && (key.startsWith('sv_') || key === LS.stores)) keys.push(key);
+  }
+  keys.forEach(key=>localStorage.removeItem(key));
+}
+function restoreBackupPayload(payload){
+  const data = payload.data || {};
+  clearSariseStorage();
+  if(data.localStorage && typeof data.localStorage === 'object'){
+    Object.entries(data.localStorage).forEach(([key,value])=>{
+      if(typeof value === 'string') localStorage.setItem(key, value);
+    });
+  }else{
+    if(Array.isArray(data.stores)) localStorage.setItem(LS.stores, JSON.stringify(data.stores));
+    if(data.templates) localStorage.setItem(LS.templates, JSON.stringify(data.templates));
+    if(data.history) localStorage.setItem(LS.history, JSON.stringify(data.history));
+    if(data.ranking) localStorage.setItem(LS_RANKING, JSON.stringify(data.ranking));
+    if(data.diagnosis) localStorage.setItem(LS_DIAGNOSIS, JSON.stringify(data.diagnosis));
+    if(data.monthlyReports) localStorage.setItem(LS_REPORT, JSON.stringify(data.monthlyReports));
+    if(data.dashboard) localStorage.setItem(LS_DASHBOARD, JSON.stringify(data.dashboard));
+    if(data.settings?.baseUrl) localStorage.setItem(LS.baseUrl, data.settings.baseUrl);
+  }
+  if(payload.exportedAt) localStorage.setItem(LS.lastExport, payload.exportedAt);
+  location.reload();
+}
+function confirmImportPayload(payload){
+  const run = ()=>openConfirm(
+    'データをインポート',
+    ['現在のデータは上書きされます。', '安全のため、現在のデータを自動的にバックアップしてから復元します。'],
+    ()=>{
+      exportAutoBackupBeforeImport();
+      setTimeout(()=>restoreBackupPayload(payload), 300);
+    },
+    'インポートする'
+  );
+  if(isSariseBackup(payload)) run();
+  else openConfirm(
+    'バックアップ形式の確認',
+    ['このファイルはSarise Voiceのバックアップではない可能性があります。続行しますか？'],
+    run,
+    '続行する'
+  );
+}
+function handleImportFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const payload = JSON.parse(reader.result);
+      if(!payload || typeof payload !== 'object') throw new Error('invalid');
+      if(!payload.data && Array.isArray(payload)){
+        confirmImportPayload({app:'Sarise Voice', version:'legacy', exportedAt:new Date().toISOString(), data:{stores:payload}});
+        return;
+      }
+      if(!payload.data){
+        openNotice('ファイル形式が正しくありません', ['JSONとして読み込めましたが、バックアップデータの構造ではありません。']);
+        return;
+      }
+      confirmImportPayload(payload);
+    }catch(e){
+      openNotice('ファイル形式が正しくありません', ['JSONファイルが壊れているか、読み込めない形式です。']);
+    }
+  };
+  reader.onerror = ()=>openNotice('ファイル形式が正しくありません', ['ファイルを読み込めませんでした。']);
+  reader.readAsText(file);
+}
+function renderDataManagement(){
+  const last = localStorage.getItem(LS.lastExport);
+  const lastText = document.getElementById('lastExportText');
+  if(lastText) lastText.textContent = `最終エクスポート日時：${formatDisplayDate(last)}`;
+  const ranking = parseStorageJson(LS_RANKING, []);
+  const diagnosis = parseStorageJson(LS_DIAGNOSIS, []);
+  const reports = parseStorageJson(LS_REPORT, []);
+  if(document.getElementById('dataStoreCount')) document.getElementById('dataStoreCount').textContent = `${stores.length}件`;
+  if(document.getElementById('dataRankingCount')) document.getElementById('dataRankingCount').textContent = `${ranking.length}件`;
+  if(document.getElementById('dataDiagnosisCount')) document.getElementById('dataDiagnosisCount').textContent = `${diagnosis.length}件`;
+  if(document.getElementById('dataReportCount')) document.getElementById('dataReportCount').textContent = `${reports.length}件`;
+}
+function renderBackupReminder(){
+  const banner = document.getElementById('backupReminder');
+  const text = document.getElementById('backupReminderText');
+  if(!banner || !text) return;
+  const todayKey = new Date().toISOString().slice(0,10);
+  if(localStorage.getItem(LS.bannerDismissedDate) === todayKey){
+    banner.classList.remove('show');
+    return;
+  }
+  const last = localStorage.getItem(LS.lastExport);
+  if(!last){
+    text.textContent = '⚠️ バックアップがまだ作成されていません。データ消失を防ぐためエクスポートをおすすめします。';
+    banner.classList.add('show');
+    return;
+  }
+  const days = Math.floor((Date.now() - new Date(last).getTime()) / (1000*60*60*24));
+  if(days >= 7){
+    text.textContent = `⚠️ 最終バックアップから${days}日経過しています。データ消失を防ぐためエクスポートをおすすめします。`;
+    banner.classList.add('show');
+  }else{
+    banner.classList.remove('show');
+  }
+}
+window.exportAllData = exportAllData;
 
 // --- ダッシュボード ---
 function renderDashboard(){
@@ -2326,7 +3678,7 @@ if(stores.length===0){
   const s = {id:uid(),name:'サンプル店舗',status:'下書き',updatedAt:now(),author:'管理者',reviewUrl:'',config:JSON.parse(JSON.stringify(t.config)),metrics:mockMetrics(),url:'',templateId:t.id,qrReady:false,popReady:false,lastResponseAt:'未',externalLinks:[],hearing:defaultHearing()};
   stores.push(s); saveStores();
 }
-initBaseUrl(); renderAuthorOptions(); renderTemplates(); renderStores(); openEditor(stores[0]?.id); renderAnalytics(); renderHistory(); updateRoleUi(); renderDashboard(); renderRanking(); renderMonthly(); renderDiagnosisStores(); renderDiagnosisRankOptions(); renderOperation();
+initBaseUrl(); renderAuthorOptions(); renderTemplates(); renderStores(); openEditor(stores[0]?.id); renderAnalytics(); renderHistory(); updateRoleUi(); renderDashboard(); renderRanking(); renderMonthly(); renderDiagnosisStores(); renderDiagnosisRankOptions(); renderOperation(); renderDataManagement(); renderBackupReminder();
 </script>
 </body>
 </html>
