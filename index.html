@@ -138,6 +138,11 @@ textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; 
 const params = new URLSearchParams(location.search);
 const STORE = params.get('store') || params.get('s') || 'お店';
 const GG_URL = params.get('url') || params.get('u') || '';
+// 業種判定（URLパラメータ industry）。指定なし・不正値は飲食店扱い（後方互換）
+const INDUSTRY = (() => {
+  const v = (params.get('industry') || '').toLowerCase();
+  return ['food', 'beauty', 'seikotsuin'].includes(v) ? v : 'food';
+})();
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
 // templateパラメータから質問セットを選択
@@ -346,10 +351,10 @@ function sanitizeGeneratedText(text){
     .trim();
 }
 
-function buildReview(){
-  collectTextAnswers();
-
-  const TRIGGER_MAP = {
+// ===== 業種別 口コミ文章テンプレート =====
+// industry: food（飲食店）/ beauty（美容サロン）/ seikotsuin（整体院）
+const TRIGGER_MAPS = {
+  food: {
     'Instagram':                  'Instagramで見て気になり、',
     'TikTok':                     'TikTokで見て気になり、',
     '食べログ':                   '食べログを見て気になり、',
@@ -362,9 +367,29 @@ function buildReview(){
     '以前から通っている':         '以前から通っており、今回も',
     '通りがかり':                 'たまたま通りがかり、気になって',
     'チラシ':                     'チラシを見て気になり、',
-  };
+  },
+  beauty: {
+    'Instagram':                  'Instagramで見て気になり、',
+    'TikTok':                     'TikTokで見て気になり、',
+    'ホットペッパービューティー': 'ホットペッパービューティーを見て予約し、',
+    'Google検索':                 'Googleで検索して見つけ、',
+    '知人の紹介':                 '知人に紹介してもらい、',
+    '以前から通っている':         '以前から通っており、今回も',
+    'もともと知っていた':         '以前から気になっていて、',
+  },
+  seikotsuin: {
+    'Google検索':         'Googleで検索して見つけ、',
+    'TikTok':             'TikTokで見て気になり、',
+    'Instagram':          'Instagramで見て気になり、',
+    '知人の紹介':         '知人に紹介してもらい、',
+    'チラシ':             'チラシを見て気になり、',
+    '以前から通っている': '以前から通っており、今回も',
+    '通りがかり':         'たまたま通りがかり、気になって',
+  }
+};
 
-  const PURPOSE_MAP = {
+const PURPOSE_MAPS = {
+  food: {
     'ランチ':         'ランチで利用しました。',
     'ディナー':       'ディナーで利用しました。',
     '誕生日':         '誕生日のお祝いで利用しました。',
@@ -375,9 +400,26 @@ function buildReview(){
     '家族での食事':   '家族で来店しました。',
     '一人ご飯':       '一人で来店しました。',
     'ひとりごはん':   '一人で来店しました。',
-  };
+  },
+  beauty: {
+    'カット':         'カットでお世話になりました。',
+    'カラー':         'カラーでお世話になりました。',
+    'パーマ':         'パーマでお世話になりました。',
+    'トリートメント': 'トリートメントでお世話になりました。',
+    'その他':         '施術でお世話になりました。',
+  },
+  seikotsuin: {
+    '肩こり':             '肩こりの改善のため伺いました。',
+    '腰痛':               '腰痛の改善のため伺いました。',
+    '膝の痛み':           '膝の痛みの改善のため伺いました。',
+    '骨盤矯正':           '骨盤矯正のため伺いました。',
+    'スポーツによる怪我': 'スポーツでの怪我の治療のため伺いました。',
+    'その他':             '体の不調を相談に伺いました。',
+  }
+};
 
-  const ATMOSPHERE_MAP = {
+const ATMOSPHERE_MAPS = {
+  food: {
     'とても良かった':       '店内の雰囲気がとても良く、居心地が良かったです。',
     '落ち着けた':           '店内は落ち着いた雰囲気でとても居心地が良かったです。',
     '賑やかで楽しかった':   '店内は賑やかで楽しい雰囲気でした。',
@@ -385,7 +427,98 @@ function buildReview(){
     '清潔感があった':       '店内は清潔感があり、好印象でした。',
     'スタッフが明るかった': 'スタッフの方々が明るく、良い雰囲気でした。',
     '普通だった':           null,
-  };
+  },
+  beauty: {
+    'とてもおしゃれだった': '店内がとてもおしゃれで、リラックスして過ごせました。',
+    '落ち着けた':           '落ち着いた雰囲気で、ゆったりと施術を受けられました。',
+    '清潔感があった':       '店内は清潔感があり、とても気持ち良く過ごせました。',
+    '普通だった':           null,
+  },
+  seikotsuin: {
+    '清潔感があった':       '院内は清潔感があり、安心して施術を受けられました。',
+    '落ち着けた':           '落ち着いた雰囲気で、リラックスして施術を受けられました。',
+    'スタッフが明るかった': 'スタッフの方々が明るく、気持ち良く通えました。',
+    '普通だった':           null,
+  }
+};
+
+const FALLBACK_TEXTS = {
+  food: {
+    atmosphere: '居心地の良いお店でした。',
+    goodPoint: '全体的にとても満足できました。',
+    closing: 'また来たいと思います。',
+    extraSentence: '居心地も良く、とても満足できるお店でした。'
+  },
+  beauty: {
+    atmosphere: 'リラックスして施術を受けられるお店でした。',
+    goodPoint: '全体的にとても満足できました。',
+    closing: 'また通いたいと思える素敵なサロンでした。',
+    extraSentence: '仕上がりにも大満足で、また利用したいと思います。'
+  },
+  seikotsuin: {
+    atmosphere: '安心して通える整体院でした。',
+    goodPoint: '全体的にとても満足のいく施術でした。',
+    closing: 'また定期的に通わせていただきたいです。',
+    extraSentence: '施術後は体が軽くなり、本当に来て良かったです。'
+  }
+};
+
+const ACTION_VERBS = {
+  food:       { visit: '来店', use: '利用' },
+  beauty:     { visit: '来店', use: 'お世話に' },
+  seikotsuin: { visit: '来院', use: '通い' }
+};
+
+// 良かった点（複数選択）の文章スタイル（業種別）
+const GOODPOINT_BUILDERS = {
+  food: items =>
+    items.length === 1 ? items[0] + 'が印象的でした。'
+    : items.length === 2 ? items[0] + 'や' + items[1] + 'が良かったです。'
+    : items[0] + 'や' + items[1] + '、' + items.slice(2).join('・') + 'も満足でした。',
+  beauty: items =>
+    items.length === 1 ? items[0] + 'が特に印象的でした。'
+    : items.length === 2 ? items[0] + 'や' + items[1] + 'がとても良かったです。'
+    : items[0] + 'や' + items[1] + 'をはじめ、' + items.slice(2).join('・') + 'も満足でした。',
+  seikotsuin: items =>
+    items.length === 1 ? items[0] + 'が特に印象に残りました。'
+    : items.length === 2 ? items[0] + 'や' + items[1] + 'がとても良かったです。'
+    : items[0] + 'や' + items[1] + 'をはじめ、' + items.slice(2).join('・') + 'も大変満足でした。'
+};
+
+// マップに無い回答が来たときの自然な言い回しフォールバック
+function resolveTrigger(ans){
+  const s = String(ans);
+  // 既に動詞を含む場合（「見つけた」「見て」「通っている」など）はそのまま助詞でつなぐ
+  if(s.match(/(見つけ|見て|聞いて|通って|知って|来て)/)) return s + '、';
+  // 名詞っぽい場合
+  return s + 'をきっかけに、';
+}
+function resolvePurpose(ans){
+  const s = String(ans);
+  if(INDUSTRY === 'beauty')     return s + 'でお世話になりました。';
+  if(INDUSTRY === 'seikotsuin') return s + 'のため伺いました。';
+  return s + 'で利用しました。';
+}
+// 「来店目的 / 施術内容 / メニュー」に相当する質問かを業種別に判定
+// （飲食店=「目的」、美容=「メニュー」、整体院=「施術内容」など）
+function isPurposeQuestion(title){
+  const t = String(title || '');
+  if(t.includes('目的')) return true;
+  if(INDUSTRY === 'beauty' && (t.includes('メニュー') || t.includes('施術'))) return true;
+  if(INDUSTRY === 'seikotsuin' && (t.includes('施術') || t.includes('症状') || t.includes('お悩み'))) return true;
+  return false;
+}
+
+function buildReview(){
+  collectTextAnswers();
+
+  // 業種別のマップ・フォールバックを選択（不正値は飲食店）
+  const TRIGGER_MAP = TRIGGER_MAPS[INDUSTRY] || TRIGGER_MAPS.food;
+  const PURPOSE_MAP = PURPOSE_MAPS[INDUSTRY] || PURPOSE_MAPS.food;
+  const ATMOSPHERE_MAP = ATMOSPHERE_MAPS[INDUSTRY] || ATMOSPHERE_MAPS.food;
+  const FALLBACK = FALLBACK_TEXTS[INDUSTRY] || FALLBACK_TEXTS.food;
+  const VERBS = ACTION_VERBS[INDUSTRY] || ACTION_VERBS.food;
+  const buildGoodPoint = GOODPOINT_BUILDERS[INDUSTRY] || GOODPOINT_BUILDERS.food;
 
   let triggerPart = '';
   let purposePart = '';
@@ -401,7 +534,8 @@ function buildReview(){
     const title = q.title || '';
 
     if(i === 0){
-      satisfactionHigh = (typeof ans === 'number') ? ans <= 1 : false;
+      // ★4〜5（高評価）を「満足度が高い」と判定
+      satisfactionHigh = (typeof ans === 'number') ? ans >= 4 : false;
       return;
     }
     if(ans === null || ans === undefined || ans === '') return;
@@ -410,11 +544,11 @@ function buildReview(){
     const ansStr = Array.isArray(ans) ? ans[0] : String(ans);
 
     if(title.includes('きっかけ')){
-      triggerPart = TRIGGER_MAP[ansStr] || (ansStr + 'をきっかけに、');
+      triggerPart = TRIGGER_MAP[ansStr] || resolveTrigger(ansStr);
       return;
     }
-    if(title.includes('目的')){
-      purposePart = PURPOSE_MAP[ansStr] || (ansStr + 'で利用しました。');
+    if(isPurposeQuestion(title)){
+      purposePart = PURPOSE_MAP[ansStr] || resolvePurpose(ansStr);
       return;
     }
     if(title.includes('雰囲気')){
@@ -430,9 +564,7 @@ function buildReview(){
     if(title.includes('良かった') && q.type === 'multi'){
       const items = Array.isArray(ans) ? ans : [ansStr];
       goodPointAns = items;
-      if(items.length === 1)      goodPointSentence = items[0] + 'が印象的でした。';
-      else if(items.length === 2) goodPointSentence = items[0] + 'や' + items[1] + 'が良かったです。';
-      else                        goodPointSentence = items[0] + 'や' + items[1] + '、' + items.slice(2).join('・') + 'も満足でした。';
+      goodPointSentence = buildGoodPoint(items);
       return;
     }
     if(q.type === 'text'){
@@ -446,24 +578,24 @@ function buildReview(){
   if(triggerPart && purposePart){
     openSentence = triggerPart + purposePart;
   } else if(triggerPart){
-    const end = triggerPart.endsWith('って') ? '入りました。' : '来店しました。';
+    const end = (triggerPart.endsWith('って') && INDUSTRY === 'food') ? '入りました。' : (VERBS.visit + 'しました。');
     openSentence = triggerPart + end;
   } else if(purposePart){
     openSentence = purposePart;
   }
 
   // デフォルト文（回答が空のパーツを補完）
-  const effectiveAtmosphere = atmosphereSentence || '居心地の良いお店でした。';
-  const effectiveGoodPoint  = goodPointSentence  || '全体的にとても満足できました。';
+  const effectiveAtmosphere = atmosphereSentence || FALLBACK.atmosphere;
+  const effectiveGoodPoint  = goodPointSentence  || FALLBACK.goodPoint;
 
   // すべての文を順番に結合（closingは最後に1回だけ）
-  const closing = satisfactionHigh ? 'また来たいと思います。' : '';
+  const closing = satisfactionHigh ? FALLBACK.closing : '';
   const bodyParts = [openSentence, effectiveAtmosphere, menuSentence, effectiveGoodPoint, freeSentence].filter(Boolean);
   let text = bodyParts.join('');
 
   if(!text.trim()) text = `${STORE}はとても満足できるお店でした。`;
 
-  const closingKeywords = ['また来たい','また利用','またお邪魔','また訪れ','また行きたい','リピート'];
+  const closingKeywords = ['また来たい','また利用','またお邪魔','また訪れ','また行きたい','リピート','また通い','また定期的','通わせて','素敵なサロン'];
   const hasClosing = () => closingKeywords.some(k => text.includes(k));
 
   // closingを1回だけ追加（重複チェック）
@@ -479,7 +611,7 @@ function buildReview(){
   // まだ200超 → 良かった点を上位3つに絞る
   if(text.length > 200 && goodPointAns.length > 3){
     const top3 = goodPointAns.slice(0, 3);
-    const newGood = top3[0] + 'や' + top3[1] + '、' + top3[2] + 'も満足でした。';
+    const newGood = buildGoodPoint(top3);
     text = text.replace(effectiveGoodPoint, newGood);
   }
 
@@ -493,8 +625,8 @@ function buildReview(){
     if(closing && !hasClosing()){
       text += closing;
     }
-    if(text.length < 150 && !text.includes('居心地も良く') && !hasClosing()){
-      text = text.replace(/[。！!]$/, '') + '。居心地も良く、とても満足できるお店でした。';
+    if(text.length < 150 && !text.includes(FALLBACK.extraSentence) && !hasClosing()){
+      text = text.replace(/[。！!]$/, '') + '。' + FALLBACK.extraSentence;
     }
   }
 

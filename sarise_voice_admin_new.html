@@ -589,6 +589,17 @@
               </div>
               <div class="row" style="align-items:flex-end;margin-bottom:12px">
                 <div style="max-width:240px">
+                  <label class="muted">業種（口コミ文の言い回し）</label>
+                  <select id="opVoiceIndustrySelect">
+                    <option value="food">飲食店</option>
+                    <option value="beauty">美容サロン</option>
+                    <option value="seikotsuin">整体院</option>
+                  </select>
+                </div>
+                <div class="muted" style="padding-bottom:9px;font-size:12px">生成される口コミ文の言い回しが業種に合わせて変わります。</div>
+              </div>
+              <div class="row" style="align-items:flex-end;margin-bottom:12px">
+                <div style="max-width:240px">
                   <label class="muted">ベーステンプレ</label>
                   <select id="opVoiceTemplateSelect">
                     <option value="restaurant">飲食店</option>
@@ -1232,7 +1243,7 @@ function normalizeNumericLogs(logs){
   })) : [];
 }
 function defaultSariseVoice(store=null){
-  return { url: store?.url || '', responseCount:'', memo:'', updatedAt:'', customQuestions:[] };
+  return { url: store?.url || '', responseCount:'', memo:'', updatedAt:'', customQuestions:[], industryType:'food' };
 }
 function normalizeCustomQuestions(questions){
   if(!Array.isArray(questions)) return [];
@@ -1251,6 +1262,7 @@ function normalizeSariseVoice(value, store=null){
     base.memo = typeof value.memo === 'string' ? value.memo : '';
     base.updatedAt = typeof value.updatedAt === 'string' ? value.updatedAt : '';
     base.customQuestions = normalizeCustomQuestions(value.customQuestions);
+    base.industryType = ['food','beauty','seikotsuin'].includes(value.industryType) ? value.industryType : base.industryType;
   }
   return base;
 }
@@ -2105,6 +2117,8 @@ function renderOperationSariseVoice(store=currentStore()){
   if(url){ url.value = voice.url || ''; url.disabled = !canEdit(); }
   if(count){ count.value = voice.responseCount || ''; count.disabled = !canEdit(); }
   if(memo){ memo.value = voice.memo || ''; memo.disabled = !canEdit(); }
+  const industrySel = document.getElementById('opVoiceIndustrySelect');
+  if(industrySel){ industrySel.value = voice.industryType || 'food'; industrySel.disabled = !canEdit(); }
   if(updated) updated.textContent = voice.updatedAt ? formatDateTimeLabel(voice.updatedAt) : '-';
   renderSariseVoiceQr(voice.url || '');
   updateVoiceUrlWarning(voice.url || '');
@@ -2301,12 +2315,21 @@ function removeVoiceOption(qIndex, optIndex){
   scheduleVoiceQuestionSave();
   renderVoiceQuestionEditor();
 }
+// ベーステンプレのキー → 業種（口コミ文の言い回し）
+const TEMPLATE_INDUSTRY = { restaurant:'food', salon:'beauty', clinic:'seikotsuin' };
 function loadVoiceQuestionTemplate(){
   if(!canEdit()) return;
   const key = document.getElementById('opVoiceTemplateSelect')?.value || 'restaurant';
   const store = currentStore(); if(!store) return;
   const apply = ()=>{
     store.sariseVoice.customQuestions = cloneVoiceTemplate(key);
+    // テンプレに対応する業種を自動で合わせる（空白テンプレは現状維持）
+    const ind = TEMPLATE_INDUSTRY[key];
+    if(ind){
+      store.sariseVoice.industryType = ind;
+      const industrySel = document.getElementById('opVoiceIndustrySelect');
+      if(industrySel) industrySel.value = ind;
+    }
     scheduleVoiceQuestionSave();
     renderVoiceQuestionEditor(store);
     closeConfirm();
@@ -2317,9 +2340,28 @@ function loadVoiceQuestionTemplate(){
     apply();
   }
 }
+function updateVoiceIndustry(value){
+  if(!canEdit()) return;
+  const store = currentStore(); if(!store) return;
+  normalizeOperationStore(store);
+  store.sariseVoice.industryType = ['food','beauty','seikotsuin'].includes(value) ? value : 'food';
+  store.sariseVoice.updatedAt = new Date().toISOString();
+  persistOperationStore(store);
+  const updated = document.getElementById('opVoiceUpdatedAt');
+  if(updated) updated.textContent = formatDateTimeLabel(store.sariseVoice.updatedAt);
+}
 function getAppBaseUrl(){
   const base = getBaseUrl();
   return base.split('?')[0];
+}
+function resolveStoreIndustry(store){
+  const t = store?.sariseVoice?.industryType;
+  if(['food','beauty','seikotsuin'].includes(t)) return t;
+  // フォールバック: 店舗の業種テキストから推定（旧データ救済）
+  const txt = String(store?.industry || '').toLowerCase();
+  if(/美容|サロン|ヘア|ネイル|まつげ|エステ|beauty|salon|hair|nail/.test(txt)) return 'beauty';
+  if(/整体|整骨|接骨|鍼|灸|マッサージ|seikotsuin|clinic/.test(txt)) return 'seikotsuin';
+  return 'food';
 }
 function buildCustomVoiceUrl(store=currentStore()){
   if(!store) return '';
@@ -2339,6 +2381,7 @@ function buildCustomVoiceUrl(store=currentStore()){
   url.search = '';
   url.searchParams.set('store', store.name || '');
   if(store.reviewUrl) url.searchParams.set('url', store.reviewUrl);
+  url.searchParams.set('industry', resolveStoreIndustry(store));
   url.searchParams.set('q', compressed);
   return url.toString();
 }
@@ -2933,7 +2976,7 @@ async function bulkCopyUrls(){
 function updateRoleUi(){
   const viewer = activeRole()==='閲覧者';
   const editor = activeRole()==='編集者';
-  ['#createStoreBtn','#quickCreateStoreBtn','#quickDuplicateBtn','#operationAddStoreBtn','#saveDraftBtn','#applyBtn','#addQuestionBtn','#applyQuestionTemplateBtn','#addLinkBtn','#newLinkType','#newLinkLabel','#newLinkUrl','#clearHearingBtn','#opAddOtherLinkBtn','#opAddMetricBtn','#opVoiceUrl','#opVoiceResponseCount','#opVoiceMemo','#opVoiceTemplateSelect','#opVoiceLoadTemplateBtn','#opVoiceAddQuestionBtn','#opVoiceGenerateUrlBtn'].forEach(sel=>{ const el=$(sel); if(el) el.disabled = viewer; });
+  ['#createStoreBtn','#quickCreateStoreBtn','#quickDuplicateBtn','#operationAddStoreBtn','#saveDraftBtn','#applyBtn','#addQuestionBtn','#applyQuestionTemplateBtn','#addLinkBtn','#newLinkType','#newLinkLabel','#newLinkUrl','#clearHearingBtn','#opAddOtherLinkBtn','#opAddMetricBtn','#opVoiceUrl','#opVoiceResponseCount','#opVoiceMemo','#opVoiceTemplateSelect','#opVoiceIndustrySelect','#opVoiceLoadTemplateBtn','#opVoiceAddQuestionBtn','#opVoiceGenerateUrlBtn'].forEach(sel=>{ const el=$(sel); if(el) el.disabled = viewer; });
   document.querySelectorAll('.hearingInput').forEach(el=>el.disabled = viewer);
   $('#publishBtn').disabled = !canPublish();
   ['#bulkPublishBtn','#bulkDraftBtn','#bulkApplyTemplateBtn'].forEach(sel=>$(sel).disabled = !canBulkPublish());
@@ -3038,6 +3081,7 @@ document.getElementById('opVoiceLoadTemplateBtn')?.addEventListener('click', loa
 document.getElementById('opVoiceAddQuestionBtn')?.addEventListener('click', addVoiceQuestion);
 document.getElementById('opVoiceGenerateUrlBtn')?.addEventListener('click', generateCustomVoiceUrl);
 document.getElementById('opVoicePreviewBtn')?.addEventListener('click', previewCustomVoiceUrl);
+document.getElementById('opVoiceIndustrySelect')?.addEventListener('change', e=>updateVoiceIndustry(e.target.value));
 document.getElementById('exportAllDataBtn')?.addEventListener('click', exportAllData);
 document.getElementById('importDataBtn')?.addEventListener('click', ()=>document.getElementById('importDataFile')?.click());
 document.getElementById('importDataFile')?.addEventListener('change', e=>{
