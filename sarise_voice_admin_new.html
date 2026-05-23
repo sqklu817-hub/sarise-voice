@@ -1392,8 +1392,10 @@ function normalizeNumericLogs(logs){
     note: typeof row?.note === 'string' ? row.note : ''
   })) : [];
 }
+// クーポン利用条件のデフォルトテキスト（不正利用抑止のため「お一人様1回限り」等を初期値に含める）
+const DEFAULT_COUPON_CONDITIONS = 'お一人様1回限り\n他のクーポンとの併用不可\nお会計時にこの画面をご提示ください';
 function defaultCoupon(){
-  return { enabled:false, title:'', benefit:'', conditions:'', expiryType:'days', expiryDays:30, expiryDate:null, theme:'orange', updatedAt:'' };
+  return { enabled:false, title:'', benefit:'', conditions:DEFAULT_COUPON_CONDITIONS, expiryType:'days', expiryDays:30, expiryDate:null, theme:'orange', updatedAt:'' };
 }
 function normalizeCoupon(value){
   const base = defaultCoupon();
@@ -2849,7 +2851,9 @@ function renderCouponHtml(coupon, storeName){
   const FONT = "'Noto Sans JP','Inter','Hiragino Sans',sans-serif";
   const conds = String(coupon.conditions || '').split('\n').map(s=>s.trim()).filter(Boolean);
   const expiry = formatCouponExpiry(coupon);
-  const today = new Date().toISOString().slice(0,10);
+  // 発行日時（YYYY-MM-DD HH:MM）。プレビュー描画時の現在時刻を表示
+  const _d = new Date();
+  const issuedAt = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')} ${String(_d.getHours()).padStart(2,'0')}:${String(_d.getMinutes()).padStart(2,'0')}`;
   const title = coupon.title || 'ご来店ありがとうございました';
   const benefit = coupon.benefit || '（特典内容を入力してください）';
   return `<div style="width:320px;max-width:100%;background:#fff;border:2px solid ${theme.border};border-radius:14px;padding:20px;font-family:${FONT};color:#222;box-shadow:0 4px 20px rgba(0,0,0,0.08)">
@@ -2864,7 +2868,7 @@ function renderCouponHtml(coupon, storeName){
     <div style="border-top:1px dashed #ccc;padding-top:10px;text-align:center;font-size:11px;color:#777">
       <div style="margin-bottom:4px">※この画面をスタッフにご提示ください</div>
       <div style="font-size:14px;font-weight:700;color:#222">${escapeHtml(storeName || '')}</div>
-      <div style="font-size:11px;color:#999;margin-top:2px">${today}</div>
+      <div style="font-size:11px;color:#999;margin-top:2px">${issuedAt}</div>
     </div>
   </div>`;
 }
@@ -2924,6 +2928,12 @@ function setCouponField(field, value){
   if(!store) return;
   normalizeOperationStore(store);
   store.sariseVoice.coupon[field] = value;
+  // 初めてONにするときに利用条件が空なら、不正利用抑止のための初期値を自動投入
+  if(field === 'enabled' && value === true && !String(store.sariseVoice.coupon.conditions || '').trim()){
+    store.sariseVoice.coupon.conditions = DEFAULT_COUPON_CONDITIONS;
+    const condEl = document.getElementById('opCouponConditions');
+    if(condEl) condEl.value = DEFAULT_COUPON_CONDITIONS;
+  }
   store.sariseVoice.coupon.updatedAt = new Date().toISOString();
   store.sariseVoice.updatedAt = new Date().toISOString();
   store.updatedAt = now();

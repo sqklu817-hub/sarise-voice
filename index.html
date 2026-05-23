@@ -711,7 +711,9 @@ function renderCustomerCoupon(coupon, storeName){
   const theme = COUPON_THEMES[coupon.theme] || COUPON_THEMES.orange;
   const conds = String(coupon.conditions || '').split('\n').map(s=>s.trim()).filter(Boolean);
   const expiry = formatCouponExpiry(coupon);
-  const today = new Date().toISOString().slice(0,10);
+  // 発行日時（YYYY-MM-DD HH:MM）。クーポン画面を開いた瞬間の日時を表示し、再利用抑止に寄与
+  const _d = new Date();
+  const issuedAt = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')} ${String(_d.getHours()).padStart(2,'0')}:${String(_d.getMinutes()).padStart(2,'0')}`;
   const title = coupon.title || 'ご来店ありがとうございました';
   const benefit = coupon.benefit || '';
   return `
@@ -726,7 +728,7 @@ function renderCustomerCoupon(coupon, storeName){
     <div style="border-top:1px dashed #ccc;padding-top:.7rem;text-align:center;font-size:.7rem;color:#777">
       <div style="margin-bottom:.3rem;font-weight:600">※この画面をスタッフにご提示ください</div>
       <div style="font-size:.95rem;font-weight:700;color:#222">${esc(storeName || '')}</div>
-      <div style="font-size:.7rem;color:#999;margin-top:.15rem">${today}</div>
+      <div style="font-size:.7rem;color:#999;margin-top:.15rem">${issuedAt}</div>
     </div>
     <button class="brg" onclick="backFromCoupon()" style="margin-top:.8rem">← 口コミ画面に戻る</button>
   `;
