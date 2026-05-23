@@ -85,8 +85,8 @@ textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; 
 .nx { flex: 1; padding: .78rem; background: var(--primary); color: #fff; border: none; border-radius: 10px; font-size: .9rem; font-weight: 700; cursor: pointer; }
 .nx:disabled { opacity: .38; cursor: not-allowed; }
 .bk { padding: .78rem 1rem; background: var(--bg); color: var(--muted); border: 1.5px solid var(--border); border-radius: 10px; font-size: .85rem; cursor: pointer; }
-.lcard,.rcard { background: var(--card); border-radius: var(--r); padding: 1.3rem; box-shadow: var(--sh); border: 1px solid var(--border); display: none; }
-.lcard.on,.rcard.on { display: block; }
+.lcard,.rcard,.ccard { background: var(--card); border-radius: var(--r); padding: 1.3rem; box-shadow: var(--sh); border: 1px solid var(--border); display: none; }
+.lcard.on,.rcard.on,.ccard.on { display: block; }
 .rhd { text-align: center; margin-bottom: 1.1rem; }
 .rtl { font-size: 1.05rem; font-weight: 700; color: var(--ok); }
 .rsb { font-size: .78rem; color: var(--muted); margin-top: .25rem; line-height: 1.6; }
@@ -95,6 +95,7 @@ textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; 
 .bcp { background: var(--ok); color: #fff; border: none; margin-bottom: .6rem; }
 .bgg { background: #4285f4; color: #fff; border: none; margin-bottom: .6rem; }
 .brg { background: var(--bg); color: var(--muted); border: 1.5px solid var(--border); }
+.bcoupon { width: 100%; border-radius: 10px; padding: .82rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: .45rem; border: none; background: var(--accent); color: #fff; margin-top: .6rem; }
 .foot { text-align: center; margin-top: 1.5rem; font-size: .7rem; color: var(--muted); opacity: .6; }
 #toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--text); color: #fff; padding: .6rem 1.3rem; border-radius: 999px; font-size: .82rem; opacity: 0; transition: all .28s; z-index: 999; white-space: nowrap; pointer-events: none; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -129,7 +130,9 @@ textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; 
     <button class="bcp" id="bcopy" onclick="cpReview()">📋 口コミ文をコピーする</button>
     <a class="bgg" id="bgg" href="#" target="_blank" rel="noopener">🔍 Googleの口コミページを開く</a>
     <button class="brg" onclick="regen()">🔄 別の文章を作り直す</button>
+    <button class="bcoupon" id="bcoupon" onclick="showCoupon()" style="display:none">🎁 アンケート回答のお礼クーポンを受け取る</button>
   </div>
+  <div class="ccard" id="ccard"></div>
   <div class="foot">Powered by Sarise</div>
 </div>
 <div id="toast"></div>
@@ -142,6 +145,17 @@ const GG_URL = params.get('url') || params.get('u') || '';
 const INDUSTRY = (() => {
   const v = (params.get('industry') || '').toLowerCase();
   return ['food', 'beauty', 'seikotsuin'].includes(v) ? v : 'food';
+})();
+// お礼クーポンデータ（c パラメータ・LZString圧縮）。enabled:true のときだけ採用
+const COUPON = (() => {
+  const cp = params.get('c');
+  if(!cp || typeof LZString === 'undefined') return null;
+  try{
+    const decompressed = LZString.decompressFromEncodedURIComponent(cp);
+    const parsed = JSON.parse(decompressed);
+    if(parsed && typeof parsed === 'object' && parsed.enabled === true) return parsed;
+  }catch(e){ console.error('クーポンデータの読み込みに失敗', e); }
+  return null;
 })();
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
@@ -673,11 +687,74 @@ function toast(m){
   setTimeout(() => t.classList.remove('show'), 3000);
 }
 
+// ===== お礼クーポン（cパラメータが有効な場合のみ表示） =====
+const COUPON_THEMES = {
+  orange: {main:'#e67e22', bg:'#fff8f1', border:'#e67e22'},
+  pink:   {main:'#e91e63', bg:'#fff0f6', border:'#e91e63'},
+  blue:   {main:'#2196f3', bg:'#f0f7ff', border:'#2196f3'},
+  green:  {main:'#4caf50', bg:'#f0fff4', border:'#4caf50'},
+  black:  {main:'#2c2c2c', bg:'#fafafa', border:'#2c2c2c'}
+};
+function formatCouponExpiry(coupon){
+  if(coupon.expiryType === 'days'){
+    const d = Number(coupon.expiryDays) || 30;
+    return `本日から${d}日以内`;
+  }
+  if(coupon.expiryType === 'date' && coupon.expiryDate){
+    const dt = new Date(coupon.expiryDate);
+    if(!isNaN(dt.getTime())) return `${dt.getFullYear()}年${dt.getMonth()+1}月${dt.getDate()}日まで`;
+    return '期限未設定';
+  }
+  return '無期限';
+}
+function renderCustomerCoupon(coupon, storeName){
+  const theme = COUPON_THEMES[coupon.theme] || COUPON_THEMES.orange;
+  const conds = String(coupon.conditions || '').split('\n').map(s=>s.trim()).filter(Boolean);
+  const expiry = formatCouponExpiry(coupon);
+  const today = new Date().toISOString().slice(0,10);
+  const title = coupon.title || 'ご来店ありがとうございました';
+  const benefit = coupon.benefit || '';
+  return `
+    <div style="text-align:center;font-size:.9rem;font-weight:700;color:${theme.main};margin-bottom:.6rem">✨ アンケートご協力ありがとうございました ✨</div>
+    <div style="text-align:center;font-size:1.1rem;font-weight:700;border-top:1px solid #ddd;border-bottom:1px solid #ddd;padding:.7rem 0;margin-bottom:1rem">${esc(title)}</div>
+    <div style="border:3px dashed ${theme.border};background:${theme.bg};color:${theme.main};border-radius:12px;padding:1.2rem .8rem;text-align:center;margin-bottom:1rem">
+      <div style="font-size:.75rem;font-weight:700;letter-spacing:.2em;margin-bottom:.4rem">◆ 特典 ◆</div>
+      <div style="font-size:1.4rem;font-weight:700;line-height:1.4">${esc(benefit)}</div>
+    </div>
+    ${conds.length ? `<ul style="font-size:.85rem;color:#555;padding-left:1.2rem;margin:0 0 .8rem;line-height:1.8">${conds.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>` : ''}
+    <div style="font-size:.85rem;color:#333;font-weight:600;margin-bottom:1rem">⏰ 有効期限：${esc(expiry)}</div>
+    <div style="border-top:1px dashed #ccc;padding-top:.7rem;text-align:center;font-size:.7rem;color:#777">
+      <div style="margin-bottom:.3rem;font-weight:600">※この画面をスタッフにご提示ください</div>
+      <div style="font-size:.95rem;font-weight:700;color:#222">${esc(storeName || '')}</div>
+      <div style="font-size:.7rem;color:#999;margin-top:.15rem">${today}</div>
+    </div>
+    <button class="brg" onclick="backFromCoupon()" style="margin-top:.8rem">← 口コミ画面に戻る</button>
+  `;
+}
+function showCoupon(){
+  if(!COUPON) return;
+  document.getElementById('rcard').classList.remove('on');
+  const cc = document.getElementById('ccard');
+  if(!cc) return;
+  cc.innerHTML = renderCustomerCoupon(COUPON, STORE);
+  cc.classList.add('on');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+function backFromCoupon(){
+  document.getElementById('ccard').classList.remove('on');
+  document.getElementById('rcard').classList.add('on');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
 function resetSurvey(){
   ANS = new Array(TOTAL).fill(null);
   buildQCards();
   document.getElementById('pgw').style.display = 'block';
   document.getElementById('bcopy').textContent = '📋 口コミ文をコピーする';
+  // クーポン画面を閉じ、クーポンボタンをクーポンの有無に応じて表示
+  document.getElementById('ccard')?.classList.remove('on');
+  const bc = document.getElementById('bcoupon');
+  if(bc) bc.style.display = COUPON ? '' : 'none';
   showQ(1);
 }
 

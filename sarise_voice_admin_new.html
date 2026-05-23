@@ -162,6 +162,14 @@
     .voice-qr img,.voice-qr canvas{width:100%;max-width:100%;height:auto}
     .voice-templates{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
     .qr-template-preview{display:flex;justify-content:center;padding:16px;background:var(--bg-soft);border-radius:10px;min-height:160px}
+    .voice-coupon{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
+    .coupon-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+    .coupon-toggle{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--txt-sub);cursor:pointer;white-space:nowrap}
+    .coupon-toggle input,.coupon-radio input{width:auto}
+    .coupon-radio{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--txt-sub);cursor:pointer}
+    .coupon-editor{margin-top:14px}
+    .coupon-editor.disabled{opacity:.45;pointer-events:none}
+    .coupon-preview-frame{margin-top:6px;padding:18px;background:var(--bg-soft);border-radius:10px;display:flex;justify-content:center;align-items:flex-start;min-height:240px}
     .backup-banner{display:none;position:sticky;top:76px;z-index:9;border:1px solid #fed7aa;background:#fff7ed;color:#9a3412;border-radius:10px;padding:10px 12px;margin-bottom:14px;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;box-shadow:var(--shadow-sm)}
     .backup-banner.show{display:flex}
     .data-kv{display:grid;grid-template-columns:180px minmax(0,1fr);gap:8px;font-size:13px;margin-top:10px}
@@ -662,6 +670,63 @@
           <div id="qrTemplatePreview" class="qr-template-preview"></div>
           <div class="row" style="margin-top:10px">
             <button class="btn pri" id="qrTemplateDownloadBtn">📥 テンプレをPNGダウンロード</button>
+          </div>
+        </div>
+
+        <div class="voice-coupon">
+          <div class="coupon-head">
+            <div>
+              <h3 style="margin:0 0 6px">お礼クーポン設定</h3>
+              <div class="muted">アンケート回答後にお客様へ表示するお礼クーポン（任意）。「Google口コミ投稿への対価」ではなく「アンケート回答へのお礼」として扱われます。</div>
+            </div>
+            <label class="coupon-toggle">
+              <input type="checkbox" id="opCouponEnabled" />
+              <span>お礼クーポンを表示する</span>
+            </label>
+          </div>
+          <div id="opCouponEditor" class="coupon-editor grid2">
+            <div>
+              <div style="margin-bottom:10px">
+                <label class="muted">クーポンタイトル</label>
+                <input id="opCouponTitle" placeholder="例：ご来店ありがとうございました" />
+              </div>
+              <div style="margin-bottom:10px">
+                <label class="muted">特典内容（メイン文言）</label>
+                <input id="opCouponBenefit" placeholder="例：次回ご来店時 10% OFF" />
+              </div>
+              <div style="margin-bottom:10px">
+                <label class="muted">利用条件（任意・改行で複数行）</label>
+                <textarea id="opCouponConditions" placeholder="例：他のクーポンとの併用不可&#10;お会計時にこの画面をご提示ください" style="min-height:90px"></textarea>
+              </div>
+              <div style="margin-bottom:10px">
+                <label class="muted">有効期限の表示方法</label>
+                <div class="row" style="gap:14px;margin-top:6px">
+                  <label class="coupon-radio"><input type="radio" name="opCouponExpiryType" value="days" /> 来店日からの日数</label>
+                  <label class="coupon-radio"><input type="radio" name="opCouponExpiryType" value="date" /> 固定の日付</label>
+                  <label class="coupon-radio"><input type="radio" name="opCouponExpiryType" value="none" /> 期限なし</label>
+                </div>
+                <div id="opCouponExpiryDaysBox" style="margin-top:8px">
+                  <input id="opCouponExpiryDays" type="number" min="1" max="365" style="max-width:120px;display:inline-block" /> 日以内
+                </div>
+                <div id="opCouponExpiryDateBox" style="margin-top:8px;display:none">
+                  <input id="opCouponExpiryDate" type="date" style="max-width:200px;display:inline-block" /> まで
+                </div>
+              </div>
+              <div>
+                <label class="muted">テーマカラー</label>
+                <select id="opCouponTheme">
+                  <option value="orange">オレンジ（デフォルト）</option>
+                  <option value="pink">ピンク</option>
+                  <option value="blue">ブルー</option>
+                  <option value="green">グリーン</option>
+                  <option value="black">ブラック（モノクロ）</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="muted">プレビュー（お客様画面イメージ）</label>
+              <div id="opCouponPreview" class="coupon-preview-frame"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -1327,8 +1392,27 @@ function normalizeNumericLogs(logs){
     note: typeof row?.note === 'string' ? row.note : ''
   })) : [];
 }
+function defaultCoupon(){
+  return { enabled:false, title:'', benefit:'', conditions:'', expiryType:'days', expiryDays:30, expiryDate:null, theme:'orange', updatedAt:'' };
+}
+function normalizeCoupon(value){
+  const base = defaultCoupon();
+  if(value && typeof value === 'object'){
+    base.enabled = !!value.enabled;
+    base.title = typeof value.title === 'string' ? value.title : '';
+    base.benefit = typeof value.benefit === 'string' ? value.benefit : '';
+    base.conditions = typeof value.conditions === 'string' ? value.conditions : '';
+    base.expiryType = ['days','date','none'].includes(value.expiryType) ? value.expiryType : 'days';
+    const days = Number(value.expiryDays);
+    base.expiryDays = (Number.isFinite(days) && days > 0 && days <= 3650) ? Math.floor(days) : 30;
+    base.expiryDate = typeof value.expiryDate === 'string' && value.expiryDate ? value.expiryDate : null;
+    base.theme = ['orange','pink','blue','green','black'].includes(value.theme) ? value.theme : 'orange';
+    base.updatedAt = typeof value.updatedAt === 'string' ? value.updatedAt : '';
+  }
+  return base;
+}
 function defaultSariseVoice(store=null){
-  return { url: store?.url || '', responseCount:'', memo:'', updatedAt:'', customQuestions:[], industryType:'food' };
+  return { url: store?.url || '', responseCount:'', memo:'', updatedAt:'', customQuestions:[], industryType:'food', coupon: defaultCoupon() };
 }
 function normalizeCustomQuestions(questions){
   if(!Array.isArray(questions)) return [];
@@ -1348,6 +1432,7 @@ function normalizeSariseVoice(value, store=null){
     base.updatedAt = typeof value.updatedAt === 'string' ? value.updatedAt : '';
     base.customQuestions = normalizeCustomQuestions(value.customQuestions);
     base.industryType = ['food','beauty','seikotsuin'].includes(value.industryType) ? value.industryType : base.industryType;
+    base.coupon = normalizeCoupon(value.coupon);
   }
   return base;
 }
@@ -2241,6 +2326,7 @@ function renderOperationSariseVoice(store=currentStore()){
   const qrIndustrySel = document.getElementById('qrTemplateIndustry');
   if(qrIndustrySel) qrIndustrySel.value = resolveStoreIndustry(store);
   renderQrTemplatePreview();
+  renderOperationCoupon(store);
 }
 function renderSariseVoiceQr(url){
   const box = document.getElementById('opVoiceQr');
@@ -2511,6 +2597,14 @@ function buildCustomVoiceUrl(store=currentStore()){
   if(store.reviewUrl) url.searchParams.set('url', store.reviewUrl);
   url.searchParams.set('industry', resolveStoreIndustry(store));
   url.searchParams.set('q', compressed);
+  // クーポンが有効ならお礼クーポンデータも c パラメータで埋め込む
+  const coupon = store.sariseVoice && store.sariseVoice.coupon;
+  if(coupon && coupon.enabled){
+    try{
+      const compressedCoupon = LZString.compressToEncodedURIComponent(JSON.stringify(coupon));
+      url.searchParams.set('c', compressedCoupon);
+    }catch(e){ /* 圧縮失敗時はクーポン無しで続行 */ }
+  }
   return url.toString();
 }
 function updateVoiceUrlWarning(url){
@@ -2727,6 +2821,128 @@ async function downloadQrTemplatePng(){
   }finally{
     if(btn){ btn.disabled = false; btn.textContent = '📥 テンプレをPNGダウンロード'; }
   }
+}
+
+/* ===== お礼クーポン設定（管理画面・プレビュー） ===== */
+const COUPON_THEMES = {
+  orange: { main:'#e67e22', bg:'#fff8f1', border:'#e67e22' },
+  pink:   { main:'#e91e63', bg:'#fff0f6', border:'#e91e63' },
+  blue:   { main:'#2196f3', bg:'#f0f7ff', border:'#2196f3' },
+  green:  { main:'#4caf50', bg:'#f0fff4', border:'#4caf50' },
+  black:  { main:'#2c2c2c', bg:'#fafafa', border:'#2c2c2c' }
+};
+function formatCouponExpiry(coupon){
+  if(!coupon) return '無期限';
+  if(coupon.expiryType === 'days'){
+    const d = Number(coupon.expiryDays) || 30;
+    return `本日から${d}日以内`;
+  }
+  if(coupon.expiryType === 'date' && coupon.expiryDate){
+    const dt = new Date(coupon.expiryDate);
+    if(!isNaN(dt.getTime())) return `${dt.getFullYear()}年${dt.getMonth()+1}月${dt.getDate()}日まで`;
+    return '期限未設定';
+  }
+  return '無期限';
+}
+function renderCouponHtml(coupon, storeName){
+  const theme = COUPON_THEMES[coupon.theme] || COUPON_THEMES.orange;
+  const FONT = "'Noto Sans JP','Inter','Hiragino Sans',sans-serif";
+  const conds = String(coupon.conditions || '').split('\n').map(s=>s.trim()).filter(Boolean);
+  const expiry = formatCouponExpiry(coupon);
+  const today = new Date().toISOString().slice(0,10);
+  const title = coupon.title || 'ご来店ありがとうございました';
+  const benefit = coupon.benefit || '（特典内容を入力してください）';
+  return `<div style="width:320px;max-width:100%;background:#fff;border:2px solid ${theme.border};border-radius:14px;padding:20px;font-family:${FONT};color:#222;box-shadow:0 4px 20px rgba(0,0,0,0.08)">
+    <div style="text-align:center;font-size:13px;font-weight:700;color:${theme.main};margin-bottom:10px">✨ アンケートご協力ありがとうございました ✨</div>
+    <div style="text-align:center;font-size:16px;font-weight:700;border-top:1px solid #ddd;border-bottom:1px solid #ddd;padding:10px 0;margin-bottom:14px">${escapeHtml(title)}</div>
+    <div style="border:3px dashed ${theme.border};background:${theme.bg};color:${theme.main};border-radius:10px;padding:14px;text-align:center;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.2em;margin-bottom:6px">◆ 特典 ◆</div>
+      <div style="font-size:20px;font-weight:700;line-height:1.4">${escapeHtml(benefit)}</div>
+    </div>
+    ${conds.length ? `<ul style="font-size:13px;color:#555;padding-left:18px;margin:0 0 12px;line-height:1.7">${conds.map(c=>`<li>${escapeHtml(c)}</li>`).join('')}</ul>` : ''}
+    <div style="font-size:13px;color:#333;font-weight:600;margin-bottom:14px">⏰ 有効期限：${escapeHtml(expiry)}</div>
+    <div style="border-top:1px dashed #ccc;padding-top:10px;text-align:center;font-size:11px;color:#777">
+      <div style="margin-bottom:4px">※この画面をスタッフにご提示ください</div>
+      <div style="font-size:14px;font-weight:700;color:#222">${escapeHtml(storeName || '')}</div>
+      <div style="font-size:11px;color:#999;margin-top:2px">${today}</div>
+    </div>
+  </div>`;
+}
+function renderCouponPreview(store=currentStore()){
+  const box = document.getElementById('opCouponPreview');
+  if(!box || !store) return;
+  const c = store.sariseVoice.coupon;
+  if(!c.enabled){
+    box.innerHTML = '<div class="muted" style="padding:8px 0;text-align:center;align-self:center">クーポンOFFの状態です。トグルをONにすると編集できます。</div>';
+    return;
+  }
+  box.innerHTML = renderCouponHtml(c, store.name);
+}
+function applyCouponEditorEnabled(store=currentStore()){
+  if(!store) return;
+  const editor = document.getElementById('opCouponEditor');
+  if(!editor) return;
+  const c = store.sariseVoice.coupon;
+  const allowEdit = canEdit() && c.enabled;
+  editor.classList.toggle('disabled', !c.enabled);
+  ['opCouponTitle','opCouponBenefit','opCouponConditions','opCouponExpiryDays','opCouponExpiryDate','opCouponTheme'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.disabled = !allowEdit;
+  });
+  document.querySelectorAll('input[name="opCouponExpiryType"]').forEach(r=>{ r.disabled = !allowEdit; });
+}
+function applyCouponExpirySubfield(store=currentStore()){
+  if(!store) return;
+  const c = store.sariseVoice.coupon;
+  const daysBox = document.getElementById('opCouponExpiryDaysBox');
+  const dateBox = document.getElementById('opCouponExpiryDateBox');
+  if(daysBox) daysBox.style.display = c.expiryType === 'days' ? '' : 'none';
+  if(dateBox) dateBox.style.display = c.expiryType === 'date' ? '' : 'none';
+}
+function renderOperationCoupon(store=currentStore()){
+  if(!store) return;
+  normalizeOperationStore(store);
+  const c = store.sariseVoice.coupon;
+  const enabled = document.getElementById('opCouponEnabled');
+  if(enabled){ enabled.checked = !!c.enabled; enabled.disabled = !canEdit(); }
+  const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val == null ? '' : val; };
+  set('opCouponTitle', c.title);
+  set('opCouponBenefit', c.benefit);
+  set('opCouponConditions', c.conditions);
+  set('opCouponExpiryDays', c.expiryDays || 30);
+  set('opCouponExpiryDate', c.expiryDate || '');
+  set('opCouponTheme', c.theme || 'orange');
+  document.querySelectorAll('input[name="opCouponExpiryType"]').forEach(r=>{ r.checked = (r.value === c.expiryType); });
+  applyCouponExpirySubfield(store);
+  applyCouponEditorEnabled(store);
+  renderCouponPreview(store);
+}
+let couponSaveTimer;
+function setCouponField(field, value){
+  if(!canEdit()) return;
+  const store = currentStore();
+  if(!store) return;
+  normalizeOperationStore(store);
+  store.sariseVoice.coupon[field] = value;
+  store.sariseVoice.coupon.updatedAt = new Date().toISOString();
+  store.sariseVoice.updatedAt = new Date().toISOString();
+  store.updatedAt = now();
+  renderCouponPreview(store);
+  if(field === 'enabled') applyCouponEditorEnabled(store);
+  if(field === 'expiryType') applyCouponExpirySubfield(store);
+  scheduleCouponSave();
+}
+function scheduleCouponSave(){
+  markSavePending();
+  clearTimeout(couponSaveTimer);
+  couponSaveTimer = setTimeout(()=>{
+    const store = currentStore();
+    if(!store) return;
+    saveStoresQuiet();
+    renderStores();
+    const updated = document.getElementById('opVoiceUpdatedAt');
+    if(updated) updated.textContent = formatDateTimeLabel(store.sariseVoice.updatedAt);
+  }, 500);
 }
 
 /* ===== 口コミ返信ドラフト生成 ===== */
@@ -3758,7 +3974,8 @@ async function bulkCopyUrls(){
 function updateRoleUi(){
   const viewer = activeRole()==='閲覧者';
   const editor = activeRole()==='編集者';
-  ['#createStoreBtn','#quickCreateStoreBtn','#quickDuplicateBtn','#operationAddStoreBtn','#saveDraftBtn','#applyBtn','#addQuestionBtn','#applyQuestionTemplateBtn','#addLinkBtn','#newLinkType','#newLinkLabel','#newLinkUrl','#clearHearingBtn','#opAddOtherLinkBtn','#opAddMetricBtn','#opVoiceUrl','#opVoiceResponseCount','#opVoiceMemo','#opVoiceTemplateSelect','#opVoiceIndustrySelect','#opVoiceLoadTemplateBtn','#opVoiceAddQuestionBtn','#opVoiceGenerateUrlBtn','#opReplyInput','#opReplyDraft','#opReplyGenerateBtn','#opReplyRegenBtn','#opReplyClearBtn','#qrTemplateSelect','#qrTemplateIndustry','#qrTemplateDownloadBtn','#opVoiceQrDownloadHighResBtn'].forEach(sel=>{ const el=$(sel); if(el) el.disabled = viewer; });
+  ['#createStoreBtn','#quickCreateStoreBtn','#quickDuplicateBtn','#operationAddStoreBtn','#saveDraftBtn','#applyBtn','#addQuestionBtn','#applyQuestionTemplateBtn','#addLinkBtn','#newLinkType','#newLinkLabel','#newLinkUrl','#clearHearingBtn','#opAddOtherLinkBtn','#opAddMetricBtn','#opVoiceUrl','#opVoiceResponseCount','#opVoiceMemo','#opVoiceTemplateSelect','#opVoiceIndustrySelect','#opVoiceLoadTemplateBtn','#opVoiceAddQuestionBtn','#opVoiceGenerateUrlBtn','#opReplyInput','#opReplyDraft','#opReplyGenerateBtn','#opReplyRegenBtn','#opReplyClearBtn','#qrTemplateSelect','#qrTemplateIndustry','#qrTemplateDownloadBtn','#opVoiceQrDownloadHighResBtn','#opCouponEnabled','#opCouponTitle','#opCouponBenefit','#opCouponConditions','#opCouponExpiryDays','#opCouponExpiryDate','#opCouponTheme'].forEach(sel=>{ const el=$(sel); if(el) el.disabled = viewer; });
+  document.querySelectorAll('input[name="opCouponExpiryType"]').forEach(r=>r.disabled = viewer);
   document.querySelectorAll('.hearingInput').forEach(el=>el.disabled = viewer);
   $('#publishBtn').disabled = !canPublish();
   ['#bulkPublishBtn','#bulkDraftBtn','#bulkApplyTemplateBtn'].forEach(sel=>$(sel).disabled = !canBulkPublish());
@@ -3863,6 +4080,14 @@ document.getElementById('opVoiceQrDownloadHighResBtn')?.addEventListener('click'
 document.getElementById('qrTemplateSelect')?.addEventListener('change', renderQrTemplatePreview);
 document.getElementById('qrTemplateIndustry')?.addEventListener('change', renderQrTemplatePreview);
 document.getElementById('qrTemplateDownloadBtn')?.addEventListener('click', downloadQrTemplatePng);
+document.getElementById('opCouponEnabled')?.addEventListener('change', e=>setCouponField('enabled', e.target.checked));
+document.getElementById('opCouponTitle')?.addEventListener('input', e=>setCouponField('title', e.target.value));
+document.getElementById('opCouponBenefit')?.addEventListener('input', e=>setCouponField('benefit', e.target.value));
+document.getElementById('opCouponConditions')?.addEventListener('input', e=>setCouponField('conditions', e.target.value));
+document.getElementById('opCouponExpiryDays')?.addEventListener('input', e=>setCouponField('expiryDays', Number(e.target.value) || 0));
+document.getElementById('opCouponExpiryDate')?.addEventListener('change', e=>setCouponField('expiryDate', e.target.value || null));
+document.getElementById('opCouponTheme')?.addEventListener('change', e=>setCouponField('theme', e.target.value));
+document.querySelectorAll('input[name="opCouponExpiryType"]').forEach(r=>r.addEventListener('change', e=>{ if(e.target.checked) setCouponField('expiryType', e.target.value); }));
 document.getElementById('opVoiceLoadTemplateBtn')?.addEventListener('click', loadVoiceQuestionTemplate);
 document.getElementById('opVoiceAddQuestionBtn')?.addEventListener('click', addVoiceQuestion);
 document.getElementById('opVoiceGenerateUrlBtn')?.addEventListener('click', generateCustomVoiceUrl);
