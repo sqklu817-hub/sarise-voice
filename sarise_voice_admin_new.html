@@ -184,6 +184,15 @@
     .voice-option-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin:6px 0}
     .voice-url-warning{display:none;color:var(--warn);font-size:12px;margin-top:8px;font-weight:600}
     .voice-url-warning.show{display:block}
+    .reply-stars{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+    .reply-star{min-width:50px;height:40px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font:600 14px/1 'Inter','Noto Sans JP',sans-serif;color:var(--txt-sub);box-shadow:var(--shadow-sm)}
+    .reply-star:hover{border-color:var(--line-strong);background:var(--bg-soft)}
+    .reply-star.on{background:var(--warn);border-color:var(--warn);color:#fff}
+    .reply-star:disabled{cursor:not-allowed;opacity:.55}
+    .reply-fold{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:#fff;box-shadow:var(--shadow-sm)}
+    .reply-fold>summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--txt-sub);padding:4px 0}
+    .reply-extract-item{font-size:13px;line-height:1.95}
+    .reply-history-item{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px;background:#fff;box-shadow:var(--shadow-sm)}
 
     @media (max-width:1024px){
       .operation-store-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -527,6 +536,7 @@
         <div class="operation-detail-tabs" id="operationDetailTabs">
           <button class="on" data-op-section="basic">基本情報</button>
           <button data-op-section="voice">Sarise Voice</button>
+          <button data-op-section="reply">口コミ返信</button>
           <button data-op-section="progress">進捗ステータス</button>
           <button data-op-section="hearing">ヒアリングメモ</button>
           <button data-op-section="gbp">GBPチェックシート</button>
@@ -620,6 +630,47 @@
             <button class="btn" id="opVoiceQrDownloadBtn">QRコードをダウンロード</button>
           </div>
         </div>
+      </div>
+
+      <div class="card operation-section" id="op-section-reply">
+        <h2>口コミ返信ドラフト生成</h2>
+        <div class="muted" id="opReplyStoreInfo" style="margin-bottom:14px"></div>
+
+        <label class="muted">お客様の口コミ本文</label>
+        <textarea id="opReplyInput" style="min-height:120px" placeholder="お客様が書いた口コミ本文を貼り付けてください"></textarea>
+
+        <div style="margin-top:14px">
+          <label class="muted">★星評価</label>
+          <div class="reply-stars" id="opReplyStars"></div>
+        </div>
+
+        <div class="row" style="margin-top:14px">
+          <button class="btn pri" id="opReplyGenerateBtn">下書きを生成</button>
+          <button class="btn" id="opReplyClearBtn">クリア</button>
+        </div>
+
+        <div class="panel" id="opReplyExtract" style="margin-top:16px;display:none"></div>
+
+        <div id="opReplyDraftWrap" style="margin-top:16px;display:none">
+          <h3 style="margin-top:0">生成された下書き</h3>
+          <textarea id="opReplyDraft" style="min-height:170px"></textarea>
+          <div class="muted" id="opReplyCharCount" style="margin-top:6px"></div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn ok" id="opReplyCopyBtn">コピー</button>
+            <button class="btn" id="opReplyRegenBtn">再生成</button>
+          </div>
+        </div>
+
+        <details class="reply-fold" id="opReplyTemplateFold" style="margin-top:18px">
+          <summary>テンプレ設定（業種別テンプレの編集・店舗用カスタム）</summary>
+          <div class="muted" style="margin:8px 0">この店舗専用にテンプレを編集できます。保存するとカスタム扱いになり、下書き生成時に優先されます。</div>
+          <div id="opReplyTemplateEditor"></div>
+        </details>
+
+        <details class="reply-fold" id="opReplyHistoryFold" style="margin-top:12px">
+          <summary>返信履歴</summary>
+          <div id="opReplyHistory" style="margin-top:10px"></div>
+        </details>
       </div>
 
       <div class="card operation-section" id="op-section-progress">
@@ -1266,6 +1317,33 @@ function normalizeSariseVoice(value, store=null){
   }
   return base;
 }
+function defaultReviewReply(){
+  return { customTemplates:{1:null,2:null,3:null,4:null,5:null}, history:[] };
+}
+function normalizeReviewReply(value){
+  const base = defaultReviewReply();
+  if(value && typeof value === 'object'){
+    if(value.customTemplates && typeof value.customTemplates === 'object'){
+      [1,2,3,4,5].forEach(s=>{
+        const t = value.customTemplates[s];
+        base.customTemplates[s] = (typeof t === 'string' && t.trim()) ? t : null;
+      });
+    }
+    if(Array.isArray(value.history)){
+      base.history = value.history
+        .filter(h=>h && typeof h === 'object')
+        .slice(0,50)
+        .map(h=>({
+          date: typeof h.date === 'string' ? h.date : now(),
+          originalReview: typeof h.originalReview === 'string' ? h.originalReview : '',
+          star: [1,2,3,4,5].includes(Number(h.star)) ? Number(h.star) : 3,
+          draft: typeof h.draft === 'string' ? h.draft : '',
+          finalReply: typeof h.finalReply === 'string' ? h.finalReply : ''
+        }));
+    }
+  }
+  return base;
+}
 function normalizeOperationStore(store){
   if(!store) return store;
   store.industry = typeof store.industry === 'string' ? store.industry : (store.category || '');
@@ -1288,6 +1366,7 @@ function normalizeOperationStore(store){
   store.tasks = normalizeOperationTasks(store.tasks);
   store.numericLogs = normalizeNumericLogs(store.numericLogs);
   store.sariseVoice = normalizeSariseVoice(store.sariseVoice, store);
+  store.reviewReply = normalizeReviewReply(store.reviewReply);
   return store;
 }
 function normalizeStores(){ stores.forEach(s=>{ ensureStoreExternalLinks(s); ensureStoreHearing(s); ensureStoreGbpCheck(s); normalizeOperationStore(s); }); }
@@ -2052,6 +2131,7 @@ function renderOperationDetail(store=currentStore()){
   }
   renderOperationStatusHistory(store);
   renderOperationSariseVoice(store);
+  renderOperationReviewReply(store);
   renderOperationSnsLinks(store);
   renderOperationTasks(store);
   renderOperationMetrics(store);
@@ -2417,6 +2497,476 @@ function previewCustomVoiceUrl(){
   updateVoiceUrlWarning(url);
   window.open(url, '_blank', 'noopener');
 }
+/* ===== 口コミ返信ドラフト生成 ===== */
+const REPLY_INDUSTRY_LABEL = { food:'飲食店', beauty:'美容サロン', seikotsuin:'整体院' };
+
+const REPLY_MENU_KEYWORDS = {
+  food: ['ランチ','ディナー','コース','定食','パスタ','ラーメン','カレー','寿司','焼肉','ピザ','デザート','コーヒー','うどん','そば','天ぷら','刺身','ステーキ','ハンバーグ','スイーツ','ケーキ','弁当','丼'],
+  beauty: ['産後骨盤矯正','縮毛矯正','ヘッドスパ','トリートメント','インナーカラー','ハイライト','まつ毛パーマ','まつエク','フェイシャル','リフトアップ','ヘアセット','カット','カラー','パーマ','ブリーチ','ネイル','エステ','メイク','眉毛'],
+  seikotsuin: ['産後骨盤矯正','骨盤矯正','猫背矯正','姿勢矯正','骨格矯正','電気治療','もみほぐし','マッサージ','ストレッチ','テーピング','リハビリ','整体','矯正','指圧','鍼','灸','カイロ']
+};
+const REPLY_SYMPTOM_KEYWORDS = {
+  beauty: ['髪のダメージ','ダメージ','広がり','パサつき','白髪','くせ毛','うねり','抜け毛','ボリューム','枝毛'],
+  seikotsuin: ['坐骨神経痛','ストレートネック','ぎっくり腰','膝の痛み','五十肩','首の痛み','肩こり','腰痛','頭痛','猫背','むくみ','冷え','姿勢','産後'],
+  food: []
+};
+// 印象的なフレーズ辞書（い形容詞は reviewMatches が活用形も判定するため終止形で登録）
+const REPLY_POSITIVE_WORDS = ['丁寧','親切','清潔','おすすめ','リラックス','居心地','満足','感動','快適','安心','雰囲気','接客','対応','技術','優しい','美味しい','おいしい','嬉しい','楽しい','素晴らしい','気持ちいい','きれい','楽になった','楽になりました','軽くなった','軽くなりました','助かった','助かりました','腕がいい'];
+const REPLY_NEGATIVE_WORDS = ['対応が悪い','待ち時間','遅い','高い','不快','残念','がっかり','雑','汚い','騒がしい','まずい','冷たい','最悪','態度'];
+
+const REPLY_TEMPLATES = {
+  seikotsuin: {
+    5: [
+      '{staff_label}にご来院いただきありがとうございました。',
+      '{staff}の施術にご満足いただけたとのこと、大変嬉しく思います。',
+      '{symptom}でお悩みだったとのことですが、{positive_phrase}とのお言葉、何よりの励みになります。',
+      '{symptom}は日常生活との関わりも大きいため、引き続きサポートさせていただきます。',
+      'またのご来院を心よりお待ちしております。'
+    ],
+    4: [
+      'この度はご来院いただきありがとうございました。',
+      'お時間をいただき、ご感想までお寄せくださり感謝しております。',
+      '{symptom}の改善のお役に立てたようで嬉しく思います。',
+      '体の状態は一進一退ですので、無理のない範囲でケアを続けていきましょう。',
+      'お困りごとがあればお気軽にご相談ください。'
+    ],
+    3: [
+      'ご来院いただきありがとうございました。',
+      '貴重なご感想をいただきましたこと、感謝申し上げます。',
+      '施術につきまして、お気づきの点があればぜひお聞かせいただければ幸いです。',
+      'お客様一人ひとりに合った施術を提供できるよう、スタッフ一同努めてまいります。',
+      'またのご来院をお待ちしております。'
+    ],
+    2: [
+      'この度はご来院いただきありがとうございました。',
+      'ご期待に沿うことができず、申し訳ございませんでした。',
+      'ご不満を感じられた点について、改善に努めてまいります。',
+      'お時間をいただけるのであれば、お聞かせいただけますと幸いです。',
+      'スタッフ一同、よりよい施術の提供に向けて精進してまいります。'
+    ],
+    1: [
+      'この度は貴重なご意見をいただきありがとうございます。',
+      'お客様にご不快な思いをさせてしまいましたこと、深くお詫び申し上げます。',
+      '{negative_phrase}とのご指摘、真摯に受け止めております。',
+      'お手数をおかけしますが、お電話または直接お店までご連絡いただけますと、状況の確認と改善対応をさせていただきたく存じます。',
+      '重ねてお詫び申し上げます。'
+    ]
+  },
+  beauty: {
+    5: [
+      'この度はご来店いただきありがとうございました。',
+      '{staff}の施術にご満足いただけたとのこと、心より嬉しく思います。',
+      '{menu}でご来店くださり、{positive_phrase}とお言葉をいただけたこと、何よりの励みです。',
+      '髪の状態は日々変わりますので、メンテナンスも含めてお気軽にご相談ください。',
+      'またお会いできる日を心よりお待ちしております。'
+    ],
+    4: [
+      'この度はご来店ありがとうございました。',
+      '嬉しいご感想をお寄せくださり感謝しております。',
+      '{menu}の仕上がりにご満足いただけたようで安心いたしました。',
+      'お気に召した点・気になった点があれば、次回もぜひお聞かせください。',
+      'またのご来店をお待ちしております。'
+    ],
+    3: [
+      'ご来店いただきありがとうございました。',
+      'ご感想をお寄せくださり、ありがとうございます。',
+      '仕上がりにつきまして、ご要望に沿えるよう次回より一層意識してまいります。',
+      'ご希望のイメージなど、遠慮なくお伝えいただければ嬉しいです。',
+      'またのご来店をお待ちしております。'
+    ],
+    2: [
+      'この度はご来店いただきありがとうございました。',
+      'ご期待に沿うことができず、申し訳ございませんでした。',
+      'お気に召されなかった点について、改善に努めてまいります。',
+      'よろしければお店まで直接ご連絡いただけますと、対応を検討させていただきます。',
+      '貴重なご意見をありがとうございました。'
+    ],
+    1: [
+      'この度は貴重なご意見をいただきありがとうございます。',
+      'ご不快な思いをさせてしまいましたこと、深くお詫び申し上げます。',
+      'いただいたご指摘につきまして、真摯に受け止め改善に努めます。',
+      'お手数ですがお店まで直接ご連絡いただけますと、改善対応をさせていただきたく存じます。',
+      '重ねてお詫び申し上げます。'
+    ]
+  },
+  food: {
+    5: [
+      'この度はご来店いただきありがとうございました。',
+      '{positive_phrase}とのお言葉、スタッフ一同大変嬉しく思います。',
+      '{menu}を気に入っていただけたとのこと、料理長の励みになります。',
+      '季節ごとに新しいメニューもご用意しておりますので、ぜひまたお越しください。',
+      'またのご来店を心よりお待ちしております。'
+    ],
+    4: [
+      'この度はご来店ありがとうございました。',
+      'お忙しい中、嬉しいご感想をお寄せくださり感謝しております。',
+      '{menu}を楽しんでいただけたようで嬉しく思います。',
+      'お気に召した点・お気づきの点があれば、次回ぜひお聞かせください。',
+      'またのご来店をお待ちしております。'
+    ],
+    3: [
+      'ご来店いただきありがとうございました。',
+      '貴重なご感想をいただき感謝申し上げます。',
+      'お料理・サービスにつきまして、ご要望があればぜひお聞かせください。',
+      'お客様にご満足いただけるよう、スタッフ一同努めてまいります。',
+      'またのご来店をお待ちしております。'
+    ],
+    2: [
+      'この度はご来店いただきありがとうございました。',
+      'ご期待に沿うことができず、誠に申し訳ございませんでした。',
+      'お気に召されなかった点について、改善に努めてまいります。',
+      'よろしければお店まで直接お声がけいただけますと、対応を検討させていただきます。',
+      '貴重なご意見をありがとうございました。'
+    ],
+    1: [
+      'この度は貴重なご意見をいただきありがとうございます。',
+      'ご不快な思いをさせてしまいましたこと、深くお詫び申し上げます。',
+      'いただいたご指摘につきまして、真摯に受け止め改善に努めます。',
+      'お手数ですがお店までご連絡いただけますと、状況の確認と改善対応をさせていただきたく存じます。',
+      '重ねてお詫び申し上げます。'
+    ]
+  }
+};
+
+let replyStar = 5;
+let replyRenderedStoreId = null;
+let replyLastDraft = '';
+let replyExtractCache = null;
+
+// 口コミ本文からスタッフ名を抽出（〇〇先生 / 〇〇さん 等。普通名詞は除外）
+function extractReplyStaffName(text){
+  const NG = ['お店','店内','料理','店員','本当','一番','今回','本日','一同','全体','店長','先生','院長','スタッフ','オーナー','皆様','皆さん','全員','店舗','受付','担当','施術','最高','最後','最初','常連','全部'];
+  const honorifics = ['先生','院長','店長','オーナー','スタッフ','さん'];
+  for(const h of honorifics){
+    const re = new RegExp('([一-龥々ァ-ヶーA-Za-z]{2,5})' + h, 'g');
+    let m;
+    while((m = re.exec(text))){
+      const name = m[1];
+      if(NG.indexOf(name) !== -1) continue;
+      return name + h;
+    }
+  }
+  return '';
+}
+// 辞書ベースのキーワード抽出（長い語を優先し、部分一致の重複を除外。最大3件）
+function extractReplyKeywords(text, dict){
+  const sorted = (dict || []).slice().sort((a,b)=>b.length-a.length);
+  const found = [];
+  for(const kw of sorted){
+    if(!text.includes(kw)) continue;
+    if(found.some(f=>f.includes(kw))) continue;
+    found.push(kw);
+    if(found.length >= 3) break;
+  }
+  return found;
+}
+// い形容詞の活用形（〜かった / 〜くて）も判定する語マッチャ。否定形「〜くない」は誤検出しない
+function reviewMatches(text, word){
+  if(text.includes(word)) return true;
+  if(word.length >= 2 && word.slice(-1) === 'い'){
+    const stem = word.slice(0, -1);
+    return text.includes(stem + 'かった') || text.includes(stem + 'くて');
+  }
+  return false;
+}
+// 指定語（と活用形）をテキストから除去する
+function maskReviewWord(text, word){
+  let masked = text.split(word).join('　');
+  if(word.length >= 2 && word.slice(-1) === 'い'){
+    const stem = word.slice(0, -1);
+    masked = masked.split(stem + 'かった').join('　').split(stem + 'くて').join('　');
+  }
+  return masked;
+}
+function extractReplyPhrases(text, words, max){
+  const found = [];
+  for(const w of words){
+    if(reviewMatches(text, w) && found.indexOf(w) === -1) found.push(w);
+    if(found.length >= (max || 3)) break;
+  }
+  return found;
+}
+// ポジティブ語抽出：ネガティブ語の一部（例「対応」が「対応が悪い」内）を誤検出しないようマスク
+function extractReplyPositives(text){
+  let masked = text;
+  REPLY_NEGATIVE_WORDS.forEach(w=>{ masked = maskReviewWord(masked, w); });
+  return extractReplyPhrases(masked, REPLY_POSITIVE_WORDS, 3);
+}
+function judgeReplyTone(posCount, negCount, star){
+  if(star <= 2) return 'ネガティブ';
+  if(star >= 4) return 'ポジティブ';
+  if(negCount >= 2) return 'ネガティブ';
+  if(posCount >= 3) return 'ポジティブ';
+  return '中立';
+}
+function extractReplyInfo(text, industry, star){
+  const positives = extractReplyPositives(text);
+  const negatives = extractReplyPhrases(text, REPLY_NEGATIVE_WORDS, 3);
+  const menus = extractReplyKeywords(text, REPLY_MENU_KEYWORDS[industry] || REPLY_MENU_KEYWORDS.food);
+  const symptoms = extractReplyKeywords(text, REPLY_SYMPTOM_KEYWORDS[industry] || []);
+  return {
+    industry: industry,
+    staff: extractReplyStaffName(text),
+    menus: menus,
+    symptoms: symptoms,
+    symptom: symptoms[0] || '',
+    positives: positives,
+    negatives: negatives,
+    tone: judgeReplyTone(positives.length, negatives.length, star)
+  };
+}
+// テンプレ各行のプレースホルダを置換。抽出が無い場合は不自然にならないよう調整
+function fillReplyTemplate(lines, ex){
+  const hasStaff = !!ex.staff;
+  const hasSymptom = !!ex.symptom;
+  const out = [];
+  for(const raw of lines){
+    let line = String(raw == null ? '' : raw);
+    // {staff_label} は {staff} より先に処理する
+    line = line.split('{staff_label}').join('お客様');
+    if(hasStaff){
+      line = line.split('{staff}').join(ex.staff);
+    }else{
+      // スタッフ名が無い場合は「{staff}の」を丸ごと削って自然化
+      line = line.split('{staff}の').join('');
+      line = line.split('{staff}').join('スタッフ');
+    }
+    // 症状の抽出が無ければ、症状を含む行は丸ごとスキップ
+    if(line.includes('{symptom}')){
+      if(!hasSymptom) continue;
+      line = line.split('{symptom}').join(ex.symptom);
+    }
+    if(line.includes('{menu}')){
+      const menu = (ex.menus && ex.menus.length) ? ex.menus[0]
+        : (ex.industry === 'food' ? 'ご注文の品' : 'メニュー');
+      line = line.split('{menu}').join(menu);
+    }
+    if(line.includes('{positive_phrase}')){
+      const pos = (ex.positives && ex.positives.length) ? '「' + ex.positives[0] + '」' : 'ご満足いただけた';
+      line = line.split('{positive_phrase}').join(pos);
+    }
+    if(line.includes('{negative_phrase}')){
+      if(ex.negatives && ex.negatives.length){
+        line = line.split('{negative_phrase}').join('「' + ex.negatives[0] + '」');
+      }else{
+        line = line.split('{negative_phrase}とのご指摘').join('いただいたご指摘');
+        line = line.split('{negative_phrase}').join('ご指摘いただいた点');
+      }
+    }
+    line = line.trim();
+    if(line) out.push(line);
+  }
+  return out.join('\n');
+}
+function getReplyTemplateLines(store, star, industry){
+  const custom = (store.reviewReply && store.reviewReply.customTemplates)
+    ? store.reviewReply.customTemplates[star] : null;
+  if(typeof custom === 'string' && custom.trim()){
+    return custom.split('\n');
+  }
+  const set = REPLY_TEMPLATES[industry] || REPLY_TEMPLATES.food;
+  return set[star] || REPLY_TEMPLATES.food[star];
+}
+function renderOperationReviewReply(store=currentStore()){
+  if(!store) return;
+  normalizeOperationStore(store);
+  const industry = resolveStoreIndustry(store);
+  const info = document.getElementById('opReplyStoreInfo');
+  if(info) info.textContent = `店舗：${store.name || '-'}　／　業種：${REPLY_INDUSTRY_LABEL[industry] || '飲食店'}`;
+  if(replyRenderedStoreId !== store.id){
+    replyRenderedStoreId = store.id;
+    replyStar = 5;
+    const input = document.getElementById('opReplyInput');
+    if(input) input.value = '';
+    resetReplyOutput();
+  }
+  renderReplyStars();
+  renderReplyTemplateEditor(store);
+  renderReplyHistory(store);
+}
+function renderReplyStars(){
+  const box = document.getElementById('opReplyStars');
+  if(!box) return;
+  box.innerHTML = [1,2,3,4,5].map(s=>
+    `<button type="button" class="reply-star${s===replyStar?' on':''}" data-star="${s}" ${canEdit()?'':'disabled'}>★${s}</button>`
+  ).join('');
+}
+function resetReplyOutput(){
+  replyExtractCache = null;
+  replyLastDraft = '';
+  const ex = document.getElementById('opReplyExtract');
+  if(ex){ ex.style.display = 'none'; ex.innerHTML = ''; }
+  const wrap = document.getElementById('opReplyDraftWrap');
+  if(wrap) wrap.style.display = 'none';
+  const draft = document.getElementById('opReplyDraft');
+  if(draft) draft.value = '';
+}
+function clearReplyInput(){
+  const input = document.getElementById('opReplyInput');
+  if(input) input.value = '';
+  resetReplyOutput();
+}
+function generateReplyDraft(){
+  if(!canEdit()) return;
+  const store = currentStore();
+  if(!store) return;
+  const input = document.getElementById('opReplyInput');
+  const text = ((input && input.value) || '').trim();
+  if(!text){ alert('お客様の口コミ本文を入力してください。'); return; }
+  const industry = resolveStoreIndustry(store);
+  const ex = extractReplyInfo(text, industry, replyStar);
+  replyExtractCache = ex;
+  renderReplyExtract(ex);
+  const draft = fillReplyTemplate(getReplyTemplateLines(store, replyStar, industry), ex);
+  replyLastDraft = draft;
+  const draftEl = document.getElementById('opReplyDraft');
+  if(draftEl) draftEl.value = draft;
+  const wrap = document.getElementById('opReplyDraftWrap');
+  if(wrap) wrap.style.display = '';
+  updateReplyCharCount();
+}
+function renderReplyExtract(ex){
+  const box = document.getElementById('opReplyExtract');
+  if(!box) return;
+  const row = (label, val)=>`<div class="reply-extract-item">・${label}：${val ? escapeHtml(val) : '<span class="muted">（抽出なし）</span>'}</div>`;
+  box.innerHTML = '<strong style="font-size:13px">抽出結果</strong>'
+    + row('スタッフ名', ex.staff)
+    + row('メニュー・サービス', ex.menus.join('、'))
+    + row('症状・悩み', ex.symptoms.join('、'))
+    + row('印象的なフレーズ', ex.positives.concat(ex.negatives).join('、'))
+    + row('トーン', ex.tone);
+  box.style.display = '';
+}
+function updateReplyCharCount(){
+  const el = document.getElementById('opReplyDraft');
+  const cc = document.getElementById('opReplyCharCount');
+  if(!el || !cc) return;
+  const len = el.value.length;
+  cc.textContent = `文字数: ${len} / 推奨350文字以内`;
+  cc.style.color = len > 350 ? 'var(--warn)' : 'var(--muted)';
+}
+async function copyReplyDraft(){
+  const el = document.getElementById('opReplyDraft');
+  const text = (el && el.value) || '';
+  if(!text.trim()){ alert('コピーする下書きがありません。'); return; }
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch(e){
+    const tmp = document.createElement('textarea');
+    tmp.value = text;
+    tmp.style.position = 'fixed';
+    tmp.style.left = '-9999px';
+    document.body.appendChild(tmp);
+    tmp.select();
+    document.execCommand('copy');
+    tmp.remove();
+  }
+  const btn = document.getElementById('opReplyCopyBtn');
+  if(btn){
+    const old = btn.textContent;
+    btn.textContent = 'コピーしました';
+    setTimeout(()=>{ btn.textContent = old; }, 1600);
+  }
+  saveReplyHistoryEntry(text.trim());
+}
+// コピー時に返信履歴へ自動保存（直近と同一内容ならスキップ・最大50件）
+function saveReplyHistoryEntry(finalReply){
+  if(!canEdit() || !finalReply) return;
+  const store = currentStore();
+  if(!store) return;
+  normalizeOperationStore(store);
+  const hist = store.reviewReply.history;
+  if(hist[0] && hist[0].finalReply === finalReply) return;
+  const input = document.getElementById('opReplyInput');
+  hist.unshift({
+    date: new Date().toISOString(),
+    originalReview: ((input && input.value) || '').trim(),
+    star: replyStar,
+    draft: replyLastDraft || finalReply,
+    finalReply: finalReply
+  });
+  store.reviewReply.history = hist.slice(0,50);
+  persistOperationStore(store);
+  renderReplyHistory(store);
+}
+function renderReplyHistory(store=currentStore()){
+  const box = document.getElementById('opReplyHistory');
+  if(!box || !store) return;
+  const hist = (store.reviewReply && store.reviewReply.history) || [];
+  if(!hist.length){
+    box.innerHTML = '<div class="muted">返信履歴はまだありません。「コピー」すると自動で保存されます。</div>';
+    return;
+  }
+  box.innerHTML = hist.map((h,idx)=>{
+    const original = h.originalReview || '';
+    const short = original.length > 80 ? original.slice(0,80) + '…' : original;
+    return `<div class="reply-history-item">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <strong style="font-size:12px">★${h.star}　${escapeHtml(formatDateTimeLabel(h.date))}</strong>
+        <button class="btn warn" onclick="deleteReplyHistory(${idx})" ${canEdit()?'':'disabled'}>削除</button>
+      </div>
+      <div class="muted" style="margin-top:6px">口コミ：${escapeHtml(short) || '（記録なし）'}</div>
+      <div style="font-size:13px;white-space:pre-wrap;margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${escapeHtml(h.finalReply || '')}</div>
+    </div>`;
+  }).join('');
+}
+function deleteReplyHistory(idx){
+  if(!canEdit()) return;
+  const store = currentStore();
+  if(!store) return;
+  normalizeOperationStore(store);
+  store.reviewReply.history.splice(idx,1);
+  persistOperationStore(store);
+  renderReplyHistory(store);
+}
+function renderReplyTemplateEditor(store=currentStore()){
+  const box = document.getElementById('opReplyTemplateEditor');
+  if(!box || !store) return;
+  const industry = resolveStoreIndustry(store);
+  const set = REPLY_TEMPLATES[industry] || REPLY_TEMPLATES.food;
+  box.innerHTML = [5,4,3,2,1].map(star=>{
+    const custom = store.reviewReply.customTemplates[star];
+    const isCustom = typeof custom === 'string' && !!custom.trim();
+    const value = isCustom ? custom : (set[star] || []).join('\n');
+    const badge = isCustom ? '<span class="tag draft">カスタム</span>' : '<span class="tag">デフォルト</span>';
+    return `<div class="voice-question">
+      <div class="voice-question-top">
+        <strong>★${star} の返信テンプレ ${badge}</strong>
+      </div>
+      <textarea id="opReplyTpl${star}" ${canEdit()?'':'disabled'} style="min-height:140px">${escapeHtml(value)}</textarea>
+      <div class="muted" style="margin:6px 0">使用できるプレースホルダ: {staff} / {staff_label} / {menu} / {symptom} / {positive_phrase} / {negative_phrase}（1行＝1文）</div>
+      <div class="row">
+        <button class="btn" onclick="saveReplyTemplate(${star})" ${canEdit()?'':'disabled'}>★${star} テンプレを保存</button>
+        <button class="btn warn" onclick="resetReplyTemplate(${star})" ${(canEdit()&&isCustom)?'':'disabled'}>デフォルトに戻す</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function saveReplyTemplate(star){
+  if(!canEdit()) return;
+  const store = currentStore();
+  if(!store) return;
+  normalizeOperationStore(store);
+  const ta = document.getElementById('opReplyTpl' + star);
+  const industry = resolveStoreIndustry(store);
+  const def = ((REPLY_TEMPLATES[industry] || REPLY_TEMPLATES.food)[star] || []).join('\n').trim();
+  const val = ((ta && ta.value) || '').trim();
+  store.reviewReply.customTemplates[star] = (val && val !== def) ? val : null;
+  persistOperationStore(store);
+  renderReplyTemplateEditor(store);
+  showToast(`★${star} の返信テンプレを保存しました`);
+}
+function resetReplyTemplate(star){
+  if(!canEdit()) return;
+  const store = currentStore();
+  if(!store) return;
+  normalizeOperationStore(store);
+  store.reviewReply.customTemplates[star] = null;
+  persistOperationStore(store);
+  renderReplyTemplateEditor(store);
+  showToast(`★${star} の返信テンプレをデフォルトに戻しました`);
+}
+
 function renderOperationSnsLinks(store=currentStore()){
   const box = document.getElementById('opSnsLinks');
   if(!box || !store) return;
@@ -2976,7 +3526,7 @@ async function bulkCopyUrls(){
 function updateRoleUi(){
   const viewer = activeRole()==='閲覧者';
   const editor = activeRole()==='編集者';
-  ['#createStoreBtn','#quickCreateStoreBtn','#quickDuplicateBtn','#operationAddStoreBtn','#saveDraftBtn','#applyBtn','#addQuestionBtn','#applyQuestionTemplateBtn','#addLinkBtn','#newLinkType','#newLinkLabel','#newLinkUrl','#clearHearingBtn','#opAddOtherLinkBtn','#opAddMetricBtn','#opVoiceUrl','#opVoiceResponseCount','#opVoiceMemo','#opVoiceTemplateSelect','#opVoiceIndustrySelect','#opVoiceLoadTemplateBtn','#opVoiceAddQuestionBtn','#opVoiceGenerateUrlBtn'].forEach(sel=>{ const el=$(sel); if(el) el.disabled = viewer; });
+  ['#createStoreBtn','#quickCreateStoreBtn','#quickDuplicateBtn','#operationAddStoreBtn','#saveDraftBtn','#applyBtn','#addQuestionBtn','#applyQuestionTemplateBtn','#addLinkBtn','#newLinkType','#newLinkLabel','#newLinkUrl','#clearHearingBtn','#opAddOtherLinkBtn','#opAddMetricBtn','#opVoiceUrl','#opVoiceResponseCount','#opVoiceMemo','#opVoiceTemplateSelect','#opVoiceIndustrySelect','#opVoiceLoadTemplateBtn','#opVoiceAddQuestionBtn','#opVoiceGenerateUrlBtn','#opReplyInput','#opReplyDraft','#opReplyGenerateBtn','#opReplyRegenBtn','#opReplyClearBtn'].forEach(sel=>{ const el=$(sel); if(el) el.disabled = viewer; });
   document.querySelectorAll('.hearingInput').forEach(el=>el.disabled = viewer);
   $('#publishBtn').disabled = !canPublish();
   ['#bulkPublishBtn','#bulkDraftBtn','#bulkApplyTemplateBtn'].forEach(sel=>$(sel).disabled = !canBulkPublish());
@@ -3082,6 +3632,17 @@ document.getElementById('opVoiceAddQuestionBtn')?.addEventListener('click', addV
 document.getElementById('opVoiceGenerateUrlBtn')?.addEventListener('click', generateCustomVoiceUrl);
 document.getElementById('opVoicePreviewBtn')?.addEventListener('click', previewCustomVoiceUrl);
 document.getElementById('opVoiceIndustrySelect')?.addEventListener('change', e=>updateVoiceIndustry(e.target.value));
+document.getElementById('opReplyGenerateBtn')?.addEventListener('click', generateReplyDraft);
+document.getElementById('opReplyRegenBtn')?.addEventListener('click', generateReplyDraft);
+document.getElementById('opReplyClearBtn')?.addEventListener('click', clearReplyInput);
+document.getElementById('opReplyCopyBtn')?.addEventListener('click', copyReplyDraft);
+document.getElementById('opReplyDraft')?.addEventListener('input', updateReplyCharCount);
+document.getElementById('opReplyStars')?.addEventListener('click', e=>{
+  const b = e.target.closest('.reply-star');
+  if(!b || !canEdit()) return;
+  replyStar = Number(b.dataset.star);
+  renderReplyStars();
+});
 document.getElementById('exportAllDataBtn')?.addEventListener('click', exportAllData);
 document.getElementById('importDataBtn')?.addEventListener('click', ()=>document.getElementById('importDataFile')?.click());
 document.getElementById('importDataFile')?.addEventListener('change', e=>{
