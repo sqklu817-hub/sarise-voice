@@ -6,6 +6,7 @@
   <title>Sarise Voice 管理画面</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
 
@@ -155,10 +156,12 @@
     .mini-chart-bar{flex:1;min-width:18px;max-width:46px;background:linear-gradient(180deg,#fb923c 0%,#f97316 100%);border-radius:6px 6px 0 0;position:relative}
     .mini-chart-bar span{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);font-size:10px;color:var(--txt-sub);margin-bottom:3px;white-space:nowrap}
     .voice-url-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:end}
-    .voice-panel{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:18px;align-items:start}
+    .voice-panel{display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:18px;align-items:start}
     .voice-qr-box{border:1px solid var(--line);border-radius:12px;background:#fff;padding:14px;text-align:center;box-shadow:var(--shadow-sm)}
-    .voice-qr{width:200px;min-height:200px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;overflow:hidden}
-    .voice-qr img,.voice-qr canvas{max-width:100%;height:auto}
+    .voice-qr{width:100%;max-width:400px;min-height:200px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .voice-qr img,.voice-qr canvas{width:100%;max-width:100%;height:auto}
+    .voice-templates{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
+    .qr-template-preview{display:flex;justify-content:center;padding:16px;background:var(--bg-soft);border-radius:10px;min-height:160px}
     .backup-banner{display:none;position:sticky;top:76px;z-index:9;border:1px solid #fed7aa;background:#fff7ed;color:#9a3412;border-radius:10px;padding:10px 12px;margin-bottom:14px;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;box-shadow:var(--shadow-sm)}
     .backup-banner.show{display:flex}
     .data-kv{display:grid;grid-template-columns:180px minmax(0,1fr);gap:8px;font-size:13px;margin-top:10px}
@@ -207,7 +210,7 @@
       .operation-actions .btn,.operation-actions input{width:100%}
       .sns-row,.task-row,.metric-row{grid-template-columns:1fr}
       .voice-url-row,.data-kv{grid-template-columns:1fr}
-      .voice-qr{width:180px;min-height:180px}
+      .voice-qr{max-width:300px;min-height:180px}
     }
 
     /* GBPチェックシート */
@@ -627,7 +630,38 @@
           </div>
           <div class="voice-qr-box">
             <div class="voice-qr" id="opVoiceQr"><div class="muted">URLを入力するとQRコードを表示します</div></div>
-            <button class="btn" id="opVoiceQrDownloadBtn">QRコードをダウンロード</button>
+            <div class="row" style="justify-content:center;flex-wrap:wrap;gap:6px">
+              <button class="btn" id="opVoiceQrDownloadBtn">QRコードをダウンロード</button>
+              <button class="btn pri" id="opVoiceQrDownloadHighResBtn">📥 高解像度ダウンロード</button>
+            </div>
+            <div class="muted" style="margin-top:6px;font-size:11px">高解像度: 印刷用 1200×1200px（余白付き）</div>
+          </div>
+        </div>
+
+        <div class="voice-templates">
+          <h3 style="margin:0 0 8px">店内設置用テンプレ</h3>
+          <div class="muted" style="margin-bottom:12px">レジ横POP・テーブルステッカー等を印刷用PNGで出力できます。</div>
+          <div class="grid2" style="margin-bottom:12px">
+            <div>
+              <label class="muted">テンプレ選択</label>
+              <select id="qrTemplateSelect">
+                <option value="popup">レジ横POP（縦長 A6相当）</option>
+                <option value="sticker">テーブルステッカー（正方形）</option>
+                <option value="simple">シンプル（汎用）</option>
+              </select>
+            </div>
+            <div>
+              <label class="muted">業種に応じた文言</label>
+              <select id="qrTemplateIndustry">
+                <option value="food">飲食店</option>
+                <option value="beauty">美容サロン</option>
+                <option value="seikotsuin">整体院</option>
+              </select>
+            </div>
+          </div>
+          <div id="qrTemplatePreview" class="qr-template-preview"></div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn pri" id="qrTemplateDownloadBtn">📥 テンプレをPNGダウンロード</button>
           </div>
         </div>
       </div>
@@ -2203,6 +2237,10 @@ function renderOperationSariseVoice(store=currentStore()){
   renderSariseVoiceQr(voice.url || '');
   updateVoiceUrlWarning(voice.url || '');
   renderVoiceQuestionEditor(store);
+  // 印刷用テンプレの業種は店舗の業種から自動セット（手動変更は次回の全体再描画まで保持）
+  const qrIndustrySel = document.getElementById('qrTemplateIndustry');
+  if(qrIndustrySel) qrIndustrySel.value = resolveStoreIndustry(store);
+  renderQrTemplatePreview();
 }
 function renderSariseVoiceQr(url){
   const box = document.getElementById('opVoiceQr');
@@ -2216,7 +2254,16 @@ function renderSariseVoiceQr(url){
     box.innerHTML = '<div class="muted">QRコードライブラリを読み込み中です</div>';
     return;
   }
-  new QRCode(box, { text:url, width:200, height:200, correctLevel:QRCode.CorrectLevel.M });
+  // 読み取り精度のため width/height を大きめ・色は明示。correctLevel:M はデータ量と読み取り易さのバランス。
+  new QRCode(box, {
+    text: url,
+    width: 400,
+    height: 400,
+    correctLevel: QRCode.CorrectLevel.M,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    margin: 4
+  });
 }
 function updateSariseVoiceField(field, value){
   if(!canEdit()) return;
@@ -2230,6 +2277,7 @@ function updateSariseVoiceField(field, value){
   if(field === 'url'){
     renderSariseVoiceQr(value);
     updateVoiceUrlWarning(value);
+    renderQrTemplatePreview();
   }
 }
 async function copySariseVoiceUrl(){
@@ -2468,15 +2516,23 @@ function buildCustomVoiceUrl(store=currentStore()){
 function updateVoiceUrlWarning(url){
   const warn = document.getElementById('opVoiceUrlWarning');
   if(!warn) return;
-  if(url && url.length > 800){
-    warn.textContent = `URLが長くなっています（${url.length}文字）。質問数や選択肢を減らすことをおすすめします。`;
-    warn.classList.add('show');
-  }else if(url && url.length > 500){
-    warn.textContent = `URL長: ${url.length}文字（目安500文字を超えていますが利用可能です）`;
-    warn.classList.add('show');
-  }else{
+  if(!url){
     warn.textContent = '';
     warn.classList.remove('show');
+    warn.style.color = '';
+    return;
+  }
+  const len = url.length;
+  warn.classList.add('show');
+  if(len < 500){
+    warn.textContent = `URL長: ${len}文字 ✓`;
+    warn.style.color = '#27ae60';
+  }else if(len < 800){
+    warn.textContent = `URL長: ${len}文字（やや長め ⚠ 利用可能）`;
+    warn.style.color = '#f39c12';
+  }else{
+    warn.textContent = `URL長: ${len}文字（QR読み取り精度低下の可能性。質問・選択肢を減らすことをおすすめします）`;
+    warn.style.color = '#e74c3c';
   }
 }
 function generateCustomVoiceUrl(){
@@ -2497,6 +2553,182 @@ function previewCustomVoiceUrl(){
   updateVoiceUrlWarning(url);
   window.open(url, '_blank', 'noopener');
 }
+/* ===== QR印刷用テンプレ・高解像度ダウンロード ===== */
+// 業種別の文言
+const QR_TEMPLATE_TEXTS = {
+  food:       { thanks:'ご来店ありがとうございました', request:'お食事のご感想をお聞かせください' },
+  beauty:     { thanks:'ご来店ありがとうございました', request:'ご来店のご感想をお聞かせください' },
+  seikotsuin: { thanks:'ご来院ありがとうございました', request:'ご来院のご感想をお聞かせください' }
+};
+// 隠しコンテナで指定サイズのQRを生成してPNGのdataURLを返す（非同期）
+function generateQrPngDataUrl(text, size){
+  return new Promise((resolve, reject)=>{
+    if(typeof QRCode === 'undefined') return reject(new Error('QRCodeライブラリが読み込まれていません'));
+    if(!text) return reject(new Error('URLが空です'));
+    const tmp = document.createElement('div');
+    tmp.style.position = 'absolute';
+    tmp.style.left = '-9999px';
+    tmp.style.top = '-9999px';
+    document.body.appendChild(tmp);
+    try{
+      new QRCode(tmp, {
+        text: text,
+        width: size,
+        height: size,
+        correctLevel: QRCode.CorrectLevel.M,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        margin: 4
+      });
+    }catch(e){
+      document.body.removeChild(tmp);
+      return reject(e);
+    }
+    // qrcodejsはcanvas（モダンブラウザ）またはimg（一部）を生成。少し待ってから取り出す
+    setTimeout(()=>{
+      const canvas = tmp.querySelector('canvas');
+      const img = tmp.querySelector('img');
+      let dataUrl = '';
+      try{
+        if(canvas) dataUrl = canvas.toDataURL('image/png');
+        else if(img) dataUrl = img.src;
+      }catch(e){}
+      document.body.removeChild(tmp);
+      if(dataUrl) resolve(dataUrl);
+      else reject(new Error('QR画像の取得に失敗しました'));
+    }, 80);
+  });
+}
+// 印刷用 1200×1200 + 余白付きPNGをダウンロード
+async function downloadSariseVoiceQrHighRes(){
+  const store = currentStore();
+  const url = store && store.sariseVoice && store.sariseVoice.url;
+  if(!url){ alert('先に「QRコードを生成」を実行してください。'); return; }
+  const btn = document.getElementById('opVoiceQrDownloadHighResBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '生成中…'; }
+  try{
+    const dataUrl = await generateQrPngDataUrl(url, 1200);
+    const img = new Image();
+    await new Promise((res, rej)=>{ img.onload = res; img.onerror = ()=>rej(new Error('画像読み込み失敗')); img.src = dataUrl; });
+    const PAD = 60;
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200 + PAD * 2;
+    canvas.height = 1200 + PAD * 2;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, PAD, PAD, 1200, 1200);
+    await new Promise((resolve)=>{
+      canvas.toBlob((blob)=>{
+        const a = document.createElement('a');
+        const safeName = String(store.name || 'store').replace(/[\\/:*?"<>|]/g, '_');
+        a.href = URL.createObjectURL(blob);
+        a.download = `sarisevoice_qr_${safeName}_high.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(()=>{ URL.revokeObjectURL(a.href); resolve(); }, 100);
+      }, 'image/png');
+    });
+  }catch(e){
+    alert('高解像度QRの生成に失敗しました: ' + (e && e.message ? e.message : e));
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = '📥 高解像度ダウンロード'; }
+  }
+}
+// 業種・種類に応じた印刷用テンプレHTMLを生成
+function renderQrTemplateHtml(type, industry, qrDataUrl){
+  const t = QR_TEMPLATE_TEXTS[industry] || QR_TEMPLATE_TEXTS.food;
+  const FONT = "'Noto Sans JP','Inter','Hiragino Sans',sans-serif";
+  if(type === 'popup'){
+    return `<div style="width:400px;height:600px;background:#fff;border:2px solid #000;padding:36px 28px;box-sizing:border-box;text-align:center;font-family:${FONT};display:flex;flex-direction:column;justify-content:space-between">
+      <div style="font-size:22px;font-weight:700;color:#111">${t.thanks}</div>
+      <div style="border-top:2px solid #000;margin:6px 0"></div>
+      <img src="${qrDataUrl}" style="width:280px;height:280px;display:block;margin:0 auto" alt="QR"/>
+      <div style="border-top:2px solid #000;margin:6px 0"></div>
+      <div>
+        <div style="font-size:20px;font-weight:700;color:#e67e22">口コミにご協力ください ✨</div>
+        <div style="font-size:14px;color:#666;margin-top:6px">30秒で完了します</div>
+      </div>
+    </div>`;
+  }
+  if(type === 'sticker'){
+    return `<div style="width:400px;height:400px;background:#fff;border:2px solid #000;padding:22px 20px;box-sizing:border-box;text-align:center;font-family:${FONT};display:flex;flex-direction:column;align-items:center;justify-content:space-between">
+      <div style="font-size:18px;font-weight:700;color:#111">${t.request}</div>
+      <img src="${qrDataUrl}" style="width:230px;height:230px;display:block" alt="QR"/>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#111">↑ 読み取って投稿 ↑</div>
+        <div style="font-size:13px;color:#666;margin-top:4px">簡単30秒アンケート</div>
+      </div>
+    </div>`;
+  }
+  // simple（汎用）
+  return `<div style="width:400px;height:500px;background:#fff;border:2px solid #000;padding:36px;box-sizing:border-box;text-align:center;font-family:${FONT};display:flex;flex-direction:column;justify-content:center">
+    <img src="${qrDataUrl}" style="width:320px;height:320px;display:block;margin:0 auto" alt="QR"/>
+    <div style="font-size:18px;font-weight:700;color:#111;margin-top:30px">↑ こちらから口コミを ↑</div>
+    <div style="font-size:18px;font-weight:700;color:#111;margin-top:4px">お願いします</div>
+  </div>`;
+}
+let qrTemplateRenderToken = 0;
+async function renderQrTemplatePreview(){
+  const preview = document.getElementById('qrTemplatePreview');
+  if(!preview) return;
+  const store = currentStore();
+  const url = store && store.sariseVoice && store.sariseVoice.url;
+  if(!store || !url){
+    preview.innerHTML = '<div class="muted">先に「QRコードを生成」を実行すると、ここにテンプレのプレビューが表示されます。</div>';
+    return;
+  }
+  const type = (document.getElementById('qrTemplateSelect') || {}).value || 'popup';
+  const industry = (document.getElementById('qrTemplateIndustry') || {}).value || resolveStoreIndustry(store);
+  const token = ++qrTemplateRenderToken;
+  preview.innerHTML = '<div class="muted">プレビューを生成中…</div>';
+  try{
+    const dataUrl = await generateQrPngDataUrl(url, 600);
+    // 別の再描画が走っていたらこの結果は破棄
+    if(token !== qrTemplateRenderToken) return;
+    preview.innerHTML = renderQrTemplateHtml(type, industry, dataUrl);
+  }catch(e){
+    if(token !== qrTemplateRenderToken) return;
+    preview.innerHTML = `<div class="muted">プレビューの生成に失敗しました: ${escapeHtml(e && e.message ? e.message : String(e))}</div>`;
+  }
+}
+async function downloadQrTemplatePng(){
+  const preview = document.getElementById('qrTemplatePreview');
+  const el = preview && preview.firstElementChild;
+  if(!el || el.classList?.contains('muted')){
+    alert('先に「QRコードを生成」とテンプレのプレビュー表示を完了してください。');
+    return;
+  }
+  if(typeof html2canvas === 'undefined'){
+    alert('html2canvas ライブラリが読み込まれていません。ネットワーク接続を確認してください。');
+    return;
+  }
+  const btn = document.getElementById('qrTemplateDownloadBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '生成中…'; }
+  try{
+    const canvas = await html2canvas(el, { scale: 3, backgroundColor: '#ffffff', useCORS: true, logging: false });
+    await new Promise((resolve)=>{
+      canvas.toBlob((blob)=>{
+        const a = document.createElement('a');
+        const store = currentStore();
+        const safeName = String((store && store.name) || 'store').replace(/[\\/:*?"<>|]/g, '_');
+        const type = (document.getElementById('qrTemplateSelect') || {}).value || 'popup';
+        a.href = URL.createObjectURL(blob);
+        a.download = `sarisevoice_${safeName}_${type}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(()=>{ URL.revokeObjectURL(a.href); resolve(); }, 100);
+      }, 'image/png');
+    });
+  }catch(e){
+    alert('テンプレ画像の生成に失敗しました: ' + (e && e.message ? e.message : e));
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = '📥 テンプレをPNGダウンロード'; }
+  }
+}
+
 /* ===== 口コミ返信ドラフト生成 ===== */
 const REPLY_INDUSTRY_LABEL = { food:'飲食店', beauty:'美容サロン', seikotsuin:'整体院' };
 
@@ -3526,7 +3758,7 @@ async function bulkCopyUrls(){
 function updateRoleUi(){
   const viewer = activeRole()==='閲覧者';
   const editor = activeRole()==='編集者';
-  ['#createStoreBtn','#quickCreateStoreBtn','#quickDuplicateBtn','#operationAddStoreBtn','#saveDraftBtn','#applyBtn','#addQuestionBtn','#applyQuestionTemplateBtn','#addLinkBtn','#newLinkType','#newLinkLabel','#newLinkUrl','#clearHearingBtn','#opAddOtherLinkBtn','#opAddMetricBtn','#opVoiceUrl','#opVoiceResponseCount','#opVoiceMemo','#opVoiceTemplateSelect','#opVoiceIndustrySelect','#opVoiceLoadTemplateBtn','#opVoiceAddQuestionBtn','#opVoiceGenerateUrlBtn','#opReplyInput','#opReplyDraft','#opReplyGenerateBtn','#opReplyRegenBtn','#opReplyClearBtn'].forEach(sel=>{ const el=$(sel); if(el) el.disabled = viewer; });
+  ['#createStoreBtn','#quickCreateStoreBtn','#quickDuplicateBtn','#operationAddStoreBtn','#saveDraftBtn','#applyBtn','#addQuestionBtn','#applyQuestionTemplateBtn','#addLinkBtn','#newLinkType','#newLinkLabel','#newLinkUrl','#clearHearingBtn','#opAddOtherLinkBtn','#opAddMetricBtn','#opVoiceUrl','#opVoiceResponseCount','#opVoiceMemo','#opVoiceTemplateSelect','#opVoiceIndustrySelect','#opVoiceLoadTemplateBtn','#opVoiceAddQuestionBtn','#opVoiceGenerateUrlBtn','#opReplyInput','#opReplyDraft','#opReplyGenerateBtn','#opReplyRegenBtn','#opReplyClearBtn','#qrTemplateSelect','#qrTemplateIndustry','#qrTemplateDownloadBtn','#opVoiceQrDownloadHighResBtn'].forEach(sel=>{ const el=$(sel); if(el) el.disabled = viewer; });
   document.querySelectorAll('.hearingInput').forEach(el=>el.disabled = viewer);
   $('#publishBtn').disabled = !canPublish();
   ['#bulkPublishBtn','#bulkDraftBtn','#bulkApplyTemplateBtn'].forEach(sel=>$(sel).disabled = !canBulkPublish());
@@ -3627,6 +3859,10 @@ document.getElementById('opVoiceMemo')?.addEventListener('input', e=>updateSaris
 document.getElementById('opVoiceCopyBtn')?.addEventListener('click', copySariseVoiceUrl);
 document.getElementById('opVoiceOpenBtn')?.addEventListener('click', openSariseVoiceUrl);
 document.getElementById('opVoiceQrDownloadBtn')?.addEventListener('click', downloadSariseVoiceQr);
+document.getElementById('opVoiceQrDownloadHighResBtn')?.addEventListener('click', downloadSariseVoiceQrHighRes);
+document.getElementById('qrTemplateSelect')?.addEventListener('change', renderQrTemplatePreview);
+document.getElementById('qrTemplateIndustry')?.addEventListener('change', renderQrTemplatePreview);
+document.getElementById('qrTemplateDownloadBtn')?.addEventListener('click', downloadQrTemplatePng);
 document.getElementById('opVoiceLoadTemplateBtn')?.addEventListener('click', loadVoiceQuestionTemplate);
 document.getElementById('opVoiceAddQuestionBtn')?.addEventListener('click', addVoiceQuestion);
 document.getElementById('opVoiceGenerateUrlBtn')?.addEventListener('click', generateCustomVoiceUrl);
