@@ -1112,6 +1112,9 @@ const enc = obj => btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
 const dec = str => JSON.parse(decodeURIComponent(escape(atob(str))));
 const $ = s => document.querySelector(s);
 const DEFAULT_BASE_URL = 'https://sqklu817-hub.github.io/sarise-voice/';
+// クーポン利用条件のデフォルトテキスト（不正利用抑止のため「お一人様1回限り」等を初期値に含める）
+// ※TDZエラー防止のため、normalizeStores() が走る前のここで宣言する（defaultCoupon から参照される）
+const DEFAULT_COUPON_CONDITIONS = 'お一人様1回限り\n他のクーポンとの併用不可\nお会計時にこの画面をご提示ください';
 const nativeStorageSetItem = Storage.prototype.setItem;
 let saveStatusTimer;
 let lastFailedStorageWrite = null;
@@ -1392,8 +1395,6 @@ function normalizeNumericLogs(logs){
     note: typeof row?.note === 'string' ? row.note : ''
   })) : [];
 }
-// クーポン利用条件のデフォルトテキスト（不正利用抑止のため「お一人様1回限り」等を初期値に含める）
-const DEFAULT_COUPON_CONDITIONS = 'お一人様1回限り\n他のクーポンとの併用不可\nお会計時にこの画面をご提示ください';
 function defaultCoupon(){
   return { enabled:false, title:'', benefit:'', conditions:DEFAULT_COUPON_CONDITIONS, expiryType:'days', expiryDays:30, expiryDate:null, theme:'orange', updatedAt:'' };
 }
