@@ -677,6 +677,10 @@ function cpReview(){
     bcopy.textContent = '✅ コピーしました！';
     toast('コピーしました！Googleの口コミに貼り付けてください');
     setTimeout(() => bcopy.textContent = '📋 口コミ文をコピーする', 2800);
+    // コピー完了後、お礼クーポンが設定されていれば自動表示する
+    if(COUPON){
+      setTimeout(() => showCoupon(), 1200);
+    }
   });
 }
 

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(node -e \"const fs=require\\('fs'\\);const h=fs.readFileSync\\('index.html','utf8'\\);const m=h.match\\(/<script>\\([\\\\s\\\\S]*?\\)<\\\\/script>/\\);if\\(!m\\){console.log\\('no inline script'\\);process.exit\\(1\\);}try{new Function\\(m[1]\\);console.log\\('index.html inline script: SYNTAX OK \\('+m[1].length+' chars\\)'\\);}catch\\(e\\){console.log\\('SYNTAX ERROR:',e.message\\);process.exit\\(1\\);}\")",
+      "PowerShell($paths = @\\(\"$env:ProgramFiles\\\\nodejs\\\\node.exe\",\"$env:LOCALAPPDATA\\\\Programs\\\\nodejs\\\\node.exe\",\"${env:ProgramFiles\\(x86\\)}\\\\nodejs\\\\node.exe\"\\); $found=$null; foreach\\($p in $paths\\){ if\\(Test-Path $p\\){ $found=$p; break } }; if\\($found\\){ \"NODE: $found\" } else { $c=Get-Command node,python,py -ErrorAction SilentlyContinue; if\\($c\\){ $c | ForEach-Object { $_.Source } } else { 'no node/python' } })",
+      "PowerShell(python --version 2>&1)"
+    ]
+  }
+}
