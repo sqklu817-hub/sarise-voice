@@ -605,8 +605,11 @@
                 </div>
                 <div class="row" style="gap:8px">
                   <button class="btn" id="opVoicePreviewBtn">プレビュー</button>
-                  <button class="btn pri" id="opVoiceGenerateUrlBtn">QRコードを生成</button>
+                  <button class="btn pri" id="opVoiceGenerateUrlBtn">💾 保存</button>
                 </div>
+              </div>
+              <div class="muted" style="margin:6px 0 12px;font-size:12px">
+                💡 編集内容は自動保存されます。クライアント用URL／QRコードに反映するには「💾 保存」ボタンを押してください。
               </div>
               <div class="row" style="align-items:flex-end;margin-bottom:12px">
                 <div style="max-width:240px">
@@ -2635,13 +2638,19 @@ function updateVoiceUrlWarning(url){
 function generateCustomVoiceUrl(){
   if(!canEdit()) return;
   const store = currentStore(); if(!store) return;
+  // 「保存」ボタン：自動保存の保留中タイマーを即時flushし、URL/QRも確実に再生成する
+  clearTimeout(voiceQuestionSaveTimer);
+  normalizeOperationStore(store);
   const url = buildCustomVoiceUrl(store);
   if(!url) return;
   store.sariseVoice.url = url;
   store.sariseVoice.updatedAt = new Date().toISOString();
-  persistOperationStore(store);
+  store.updatedAt = now();
+  saveStoresQuiet();
   renderOperationSariseVoice(store);
   updateVoiceUrlWarning(url);
+  renderStores();
+  showToast('保存しました（URL・QRを更新）');
 }
 function previewCustomVoiceUrl(){
   const store = currentStore(); if(!store) return;
