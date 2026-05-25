@@ -1418,7 +1418,7 @@ function normalizeCoupon(value){
   return base;
 }
 function defaultSariseVoice(store=null){
-  return { url: store?.url || '', responseCount:'', memo:'', updatedAt:'', customQuestions:[], industryType:'food', coupon: defaultCoupon() };
+  return { url: store?.url || '', responseCount:'', memo:'', updatedAt:'', customQuestions:[], industryType:'food', lastSelectedTemplate:'restaurant', coupon: defaultCoupon() };
 }
 function normalizeCustomQuestions(questions){
   if(!Array.isArray(questions)) return [];
@@ -1438,6 +1438,7 @@ function normalizeSariseVoice(value, store=null){
     base.updatedAt = typeof value.updatedAt === 'string' ? value.updatedAt : '';
     base.customQuestions = normalizeCustomQuestions(value.customQuestions);
     base.industryType = ['food','beauty','seikotsuin'].includes(value.industryType) ? value.industryType : base.industryType;
+    base.lastSelectedTemplate = ['restaurant','salon','clinic','blank'].includes(value.lastSelectedTemplate) ? value.lastSelectedTemplate : base.lastSelectedTemplate;
     base.coupon = normalizeCoupon(value.coupon);
   }
   return base;
@@ -2324,6 +2325,8 @@ function renderOperationSariseVoice(store=currentStore()){
   if(memo){ memo.value = voice.memo || ''; memo.disabled = !canEdit(); }
   const industrySel = document.getElementById('opVoiceIndustrySelect');
   if(industrySel){ industrySel.value = voice.industryType || 'food'; industrySel.disabled = !canEdit(); }
+  const templateSel = document.getElementById('opVoiceTemplateSelect');
+  if(templateSel){ templateSel.value = voice.lastSelectedTemplate || 'restaurant'; }
   if(updated) updated.textContent = voice.updatedAt ? formatDateTimeLabel(voice.updatedAt) : '-';
   renderSariseVoiceQr(voice.url || '');
   updateVoiceUrlWarning(voice.url || '');
@@ -2543,6 +2546,7 @@ function loadVoiceQuestionTemplate(){
   const store = currentStore(); if(!store) return;
   const apply = ()=>{
     store.sariseVoice.customQuestions = cloneVoiceTemplate(key);
+    store.sariseVoice.lastSelectedTemplate = key;
     // テンプレに対応する業種を自動で合わせる（空白テンプレは現状維持）
     const ind = TEMPLATE_INDUSTRY[key];
     if(ind){
@@ -2569,6 +2573,13 @@ function updateVoiceIndustry(value){
   persistOperationStore(store);
   const updated = document.getElementById('opVoiceUpdatedAt');
   if(updated) updated.textContent = formatDateTimeLabel(store.sariseVoice.updatedAt);
+}
+function updateLastSelectedTemplate(value){
+  if(!canEdit()) return;
+  const store = currentStore(); if(!store) return;
+  normalizeOperationStore(store);
+  store.sariseVoice.lastSelectedTemplate = ['restaurant','salon','clinic','blank'].includes(value) ? value : 'restaurant';
+  persistOperationStore(store);
 }
 function getAppBaseUrl(){
   const base = getBaseUrl();
@@ -4113,6 +4124,7 @@ document.getElementById('opVoiceAddQuestionBtn')?.addEventListener('click', addV
 document.getElementById('opVoiceGenerateUrlBtn')?.addEventListener('click', generateCustomVoiceUrl);
 document.getElementById('opVoicePreviewBtn')?.addEventListener('click', previewCustomVoiceUrl);
 document.getElementById('opVoiceIndustrySelect')?.addEventListener('change', e=>updateVoiceIndustry(e.target.value));
+document.getElementById('opVoiceTemplateSelect')?.addEventListener('change', e=>updateLastSelectedTemplate(e.target.value));
 document.getElementById('opReplyGenerateBtn')?.addEventListener('click', generateReplyDraft);
 document.getElementById('opReplyRegenBtn')?.addEventListener('click', generateReplyDraft);
 document.getElementById('opReplyClearBtn')?.addEventListener('click', clearReplyInput);
