@@ -7,6 +7,61 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script type="module">
+    // Firebase Firestore — Sarise Voice 回答集計を取得
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    const firebaseConfig = {
+      apiKey: "AIzaSyA6w6s6I1bad9UY6Z1wW-EHNLxByTPD2UQ",
+      authDomain: "sarise-eeb4f.firebaseapp.com",
+      projectId: "sarise-eeb4f",
+      storageBucket: "sarise-eeb4f.firebasestorage.app",
+      messagingSenderId: "411584906382",
+      appId: "1:411584906382:web:5bd996690f11db407035df"
+    };
+    try {
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      // 同一店舗の回答を全件取得して { count, lastResponseAt, recent, byQuestion, raw } を返す
+      window.fetchSariseStats = async (storeName) => {
+        if(!storeName) return null;
+        const snap = await getDocs(query(collection(db, 'responses'), where('storeName', '==', String(storeName))));
+        const docs = [];
+        snap.forEach(d => docs.push(d.data()));
+        // createdAt は Firestore Timestamp。JS Date に変換し降順にソート
+        const dated = docs.map(d => ({
+          ...d,
+          createdAtMs: d.createdAt && typeof d.createdAt.toMillis === 'function' ? d.createdAt.toMillis() : 0
+        })).sort((a,b) => b.createdAtMs - a.createdAtMs);
+        // 質問ごとの集計（answer ごとに出現回数を数える）
+        const byQuestion = {};
+        for(const d of dated){
+          const ans = Array.isArray(d.answers) ? d.answers : [];
+          for(const a of ans){
+            const q = (a && a.question) || '(無題の質問)';
+            const v = (a && a.answer) || '(未回答)';
+            if(!byQuestion[q]) byQuestion[q] = { total:0, counts:{} };
+            byQuestion[q].total += 1;
+            // multi の場合は "A、B、C" のように連結されている。「、」で分割して個別にカウント
+            const parts = String(v).split(/[、,]/).map(s=>s.trim()).filter(Boolean);
+            const keys = parts.length ? parts : [String(v)];
+            for(const k of keys){
+              byQuestion[q].counts[k] = (byQuestion[q].counts[k] || 0) + 1;
+            }
+          }
+        }
+        return {
+          count: dated.length,
+          lastResponseAt: dated[0] ? dated[0].createdAtMs : 0,
+          recent: dated.slice(0, 5),
+          byQuestion,
+          raw: dated
+        };
+      };
+    } catch(e){
+      console.error('[Sarise admin] Firebase初期化に失敗', e);
+    }
+  </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
 
@@ -585,14 +640,25 @@
             </div>
             <div class="grid2" style="margin-top:14px">
               <div>
-                <label class="muted">回答数（累計）</label>
-                <input id="opVoiceResponseCount" type="number" min="0" />
+                <label class="muted">回答数（累計） <span style="font-size:11px;color:var(--muted)">（Firestore自動取得）</span></label>
+                <input id="opVoiceResponseCount" type="number" min="0" readonly style="background:#f9fafb;cursor:default" />
               </div>
               <div>
-                <label class="muted">最終更新日時</label>
-                <div class="panel" id="opVoiceUpdatedAt" style="min-height:42px;display:flex;align-items:center">-</div>
+                <label class="muted">最終回答日時 <span style="font-size:11px;color:var(--muted)">（Firestore自動取得）</span></label>
+                <div class="panel" id="opVoiceLastResponseAt" style="min-height:42px;display:flex;align-items:center">-</div>
               </div>
             </div>
+            <div class="grid2" style="margin-top:14px">
+              <div>
+                <label class="muted">最終更新日時（設定）</label>
+                <div class="panel" id="opVoiceUpdatedAt" style="min-height:42px;display:flex;align-items:center">-</div>
+              </div>
+              <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+                <button class="btn" id="opVoiceShowAggregationBtn">📊 集計を表示</button>
+                <button class="btn" id="opVoiceRefreshStatsBtn">🔄 回答数を更新</button>
+              </div>
+            </div>
+            <div id="opVoiceAggregationPanel" class="panel" style="display:none;margin-top:10px;padding:14px"></div>
             <div style="margin-top:14px">
               <label class="muted">直近の回答メモ</label>
               <textarea id="opVoiceMemo" placeholder="最新の回答内容や気になる口コミをメモ"></textarea>
@@ -2321,13 +2387,18 @@ function renderOperationSariseVoice(store=currentStore()){
   const memo = document.getElementById('opVoiceMemo');
   const updated = document.getElementById('opVoiceUpdatedAt');
   if(url){ url.value = voice.url || ''; url.disabled = !canEdit(); }
-  if(count){ count.value = voice.responseCount || ''; count.disabled = !canEdit(); }
+  if(count){ count.value = voice.responseCount || ''; }
   if(memo){ memo.value = voice.memo || ''; memo.disabled = !canEdit(); }
   const industrySel = document.getElementById('opVoiceIndustrySelect');
   if(industrySel){ industrySel.value = voice.industryType || 'food'; industrySel.disabled = !canEdit(); }
   const templateSel = document.getElementById('opVoiceTemplateSelect');
   if(templateSel){ templateSel.value = voice.lastSelectedTemplate || 'restaurant'; }
   if(updated) updated.textContent = voice.updatedAt ? formatDateTimeLabel(voice.updatedAt) : '-';
+  // 折りたたみ集計パネルを毎回閉じる
+  const aggPanel = document.getElementById('opVoiceAggregationPanel');
+  if(aggPanel){ aggPanel.style.display = 'none'; aggPanel.innerHTML = ''; }
+  const lastResp = document.getElementById('opVoiceLastResponseAt');
+  if(lastResp) lastResp.textContent = '読み込み中...';
   renderSariseVoiceQr(voice.url || '');
   updateVoiceUrlWarning(voice.url || '');
   renderVoiceQuestionEditor(store);
@@ -2336,6 +2407,110 @@ function renderOperationSariseVoice(store=currentStore()){
   if(qrIndustrySel) qrIndustrySel.value = resolveStoreIndustry(store);
   renderQrTemplatePreview();
   renderOperationCoupon(store);
+  // Firestore から回答数・最終回答日時を自動取得（非同期・失敗しても UI を壊さない）
+  refreshSariseStats(store);
+}
+
+let __sariseStatsCache = {};
+async function refreshSariseStats(store=currentStore()){
+  if(!store) return;
+  const lastResp = document.getElementById('opVoiceLastResponseAt');
+  const countEl = document.getElementById('opVoiceResponseCount');
+  if(typeof window.fetchSariseStats !== 'function'){
+    if(lastResp) lastResp.textContent = '(Firebase未初期化)';
+    return;
+  }
+  try {
+    const stats = await window.fetchSariseStats(store.name);
+    if(!stats) return;
+    __sariseStatsCache[store.id] = stats;
+    if(countEl) countEl.value = stats.count;
+    if(lastResp) lastResp.textContent = stats.lastResponseAt ? new Date(stats.lastResponseAt).toLocaleString('ja-JP') : '回答なし';
+  } catch(e){
+    console.error('[Sarise admin] 集計取得失敗', e);
+    if(lastResp) lastResp.textContent = '取得に失敗しました';
+  }
+}
+
+function escapeHtmlSarise(s){ return String(s ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderSariseAggregation(stats){
+  const panel = document.getElementById('opVoiceAggregationPanel');
+  if(!panel) return;
+  if(!stats || stats.count === 0){
+    panel.innerHTML = '<div class="muted">まだ回答がありません。</div>';
+    panel.style.display = 'block';
+    return;
+  }
+  // 質問別棒グラフ
+  const qBlocks = Object.entries(stats.byQuestion).map(([qTitle, info])=>{
+    const total = info.total || 1;
+    const items = Object.entries(info.counts).sort((a,b)=>b[1]-a[1]);
+    const rows = items.map(([label, n])=>{
+      const pct = Math.round((n/total)*100);
+      return `<div style="display:grid;grid-template-columns:160px 1fr 60px;gap:8px;align-items:center;margin-bottom:4px">
+        <div style="font-size:12px;color:var(--txt-sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtmlSarise(label)}">${escapeHtmlSarise(label)}</div>
+        <div style="background:#e5e7eb;border-radius:6px;height:14px;overflow:hidden"><div style="background:var(--accent);width:${pct}%;height:100%"></div></div>
+        <div style="font-size:12px;color:var(--txt-sub);text-align:right">${n}件 (${pct}%)</div>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:14px">
+      <div style="font-weight:600;font-size:13px;margin-bottom:6px">${escapeHtmlSarise(qTitle)} <span class="muted" style="font-size:11px;font-weight:400">(${info.total}件の回答)</span></div>
+      ${rows}
+    </div>`;
+  }).join('');
+  // 直近5件プレビュー
+  const recent = stats.recent.map((r, i)=>{
+    const when = r.createdAtMs ? new Date(r.createdAtMs).toLocaleString('ja-JP') : '-';
+    const preview = (r.generatedReview || '').slice(0, 80);
+    return `<div style="border-top:1px solid var(--line);padding:8px 0">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:3px">#${i+1} ${escapeHtmlSarise(when)}</div>
+      <div style="font-size:12px;color:var(--txt)">${escapeHtmlSarise(preview)}${(r.generatedReview||'').length > 80 ? '…' : ''}</div>
+    </div>`;
+  }).join('');
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="margin:0">📊 回答集計（${stats.count}件）</h3>
+      <button class="btn" onclick="document.getElementById('opVoiceAggregationPanel').style.display='none'">閉じる</button>
+    </div>
+    <div style="margin-bottom:18px">${qBlocks || '<div class="muted">集計可能な選択式質問がありません。</div>'}</div>
+    <div>
+      <h3 style="margin:0 0 8px;font-size:13px">直近5件の回答プレビュー</h3>
+      ${recent || '<div class="muted">プレビューする回答がありません。</div>'}
+    </div>
+  `;
+  panel.style.display = 'block';
+}
+
+async function showSariseAggregation(){
+  const store = currentStore();
+  if(!store) return;
+  const panel = document.getElementById('opVoiceAggregationPanel');
+  if(!panel) return;
+  // 既に開いていれば閉じる
+  if(panel.style.display !== 'none' && panel.innerHTML){
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'block';
+  panel.innerHTML = '<div class="muted">集計を取得中...</div>';
+  if(typeof window.fetchSariseStats !== 'function'){
+    panel.innerHTML = '<div class="err">Firebase が初期化されていません。ネットワーク接続を確認してください。</div>';
+    return;
+  }
+  try {
+    const stats = await window.fetchSariseStats(store.name);
+    __sariseStatsCache[store.id] = stats;
+    // 並行して回答数表示も更新
+    const countEl = document.getElementById('opVoiceResponseCount');
+    if(countEl) countEl.value = stats.count;
+    const lastResp = document.getElementById('opVoiceLastResponseAt');
+    if(lastResp) lastResp.textContent = stats.lastResponseAt ? new Date(stats.lastResponseAt).toLocaleString('ja-JP') : '回答なし';
+    renderSariseAggregation(stats);
+  } catch(e){
+    console.error(e);
+    panel.innerHTML = '<div class="err">集計の取得に失敗しました: ' + escapeHtmlSarise(e.message || e) + '</div>';
+  }
 }
 function renderSariseVoiceQr(url){
   const box = document.getElementById('opVoiceQr');
@@ -4102,8 +4277,10 @@ document.getElementById('opProgressPhase')?.addEventListener('change', e=>update
 document.getElementById('opAddOtherLinkBtn')?.addEventListener('click', addOperationOtherLink);
 document.getElementById('opAddMetricBtn')?.addEventListener('click', addOperationMetric);
 document.getElementById('opVoiceUrl')?.addEventListener('input', e=>updateSariseVoiceField('url', e.target.value));
-document.getElementById('opVoiceResponseCount')?.addEventListener('input', e=>updateSariseVoiceField('responseCount', e.target.value));
+// 回答数は Firestore 自動取得（手入力不可）になったため `input` リスナーは外す
 document.getElementById('opVoiceMemo')?.addEventListener('input', e=>updateSariseVoiceField('memo', e.target.value));
+document.getElementById('opVoiceShowAggregationBtn')?.addEventListener('click', showSariseAggregation);
+document.getElementById('opVoiceRefreshStatsBtn')?.addEventListener('click', ()=>refreshSariseStats(currentStore()));
 document.getElementById('opVoiceCopyBtn')?.addEventListener('click', copySariseVoiceUrl);
 document.getElementById('opVoiceOpenBtn')?.addEventListener('click', openSariseVoiceUrl);
 document.getElementById('opVoiceQrDownloadBtn')?.addEventListener('click', downloadSariseVoiceQr);

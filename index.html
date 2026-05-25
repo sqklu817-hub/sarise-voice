@@ -6,6 +6,38 @@
 <title>ご来店ありがとうございました | Sarise</title>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+<script type="module">
+  // Firebase Firestore — アンケート回答をクラウドに送信
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+  const firebaseConfig = {
+    apiKey: "AIzaSyA6w6s6I1bad9UY6Z1wW-EHNLxByTPD2UQ",
+    authDomain: "sarise-eeb4f.firebaseapp.com",
+    projectId: "sarise-eeb4f",
+    storageBucket: "sarise-eeb4f.firebasestorage.app",
+    messagingSenderId: "411584906382",
+    appId: "1:411584906382:web:5bd996690f11db407035df"
+  };
+  try {
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    window.submitSariseResponse = async (payload) => {
+      try {
+        await addDoc(collection(db, 'responses'), {
+          storeName: String(payload.storeName || ''),
+          answers: Array.isArray(payload.answers) ? payload.answers : [],
+          generatedReview: String(payload.generatedReview || ''),
+          userAgent: navigator.userAgent || '',
+          createdAt: serverTimestamp()
+        });
+      } catch (e) {
+        console.error('[Sarise] Firestore送信に失敗', e);
+      }
+    };
+  } catch (e) {
+    console.error('[Sarise] Firebase初期化に失敗', e);
+  }
+</script>
 <style>
 :root {
   --bg: #fffdf8;
@@ -656,12 +688,39 @@ function startGen(){
   setTimeout(() => showRes(buildReview()), 600);
 }
 
+// Firebase へは1回のアンケート完了につき1回のみ送信する
+let firebaseSubmitted = false;
+function buildFirebasePayload(reviewText){
+  const answers = QUESTIONS.map((q, i) => {
+    const raw = ANS[i];
+    let answerText = '';
+    if(q.type === 'text'){
+      answerText = String(raw || '').trim();
+    } else if(i === 0 && typeof raw === 'number'){
+      // Q1 はスター: 1〜5 の数字。対応ラベルを併記
+      const label = (q.options && q.options[5 - raw]) || '';
+      answerText = `${raw}点${label ? '（' + label + '）' : ''}`;
+    } else if(Array.isArray(raw)){
+      answerText = raw.join('、');
+    } else {
+      answerText = String(raw || '');
+    }
+    return { question: q.title || '', answer: answerText };
+  });
+  return { storeName: STORE, answers, generatedReview: reviewText };
+}
 function showRes(txt){
   document.getElementById('lcard').classList.remove('on');
   document.getElementById('gentext').textContent = txt;
   document.getElementById('charCount').textContent = `${txt.length}文字`;
   document.getElementById('rcard').classList.add('on');
   window.scrollTo({top: 0, behavior: 'smooth'});
+  // 口コミ生成完了時に1回だけ Firestore へ送信
+  if(!firebaseSubmitted && typeof window.submitSariseResponse === 'function'){
+    firebaseSubmitted = true;
+    try { window.submitSariseResponse(buildFirebasePayload(txt)); }
+    catch(e){ console.error('[Sarise] submitSariseResponse 呼び出し失敗', e); }
+  }
 }
 
 function regen(){
@@ -754,6 +813,7 @@ function backFromCoupon(){
 
 function resetSurvey(){
   ANS = new Array(TOTAL).fill(null);
+  firebaseSubmitted = false;
   buildQCards();
   document.getElementById('pgw').style.display = 'block';
   document.getElementById('bcopy').textContent = '📋 口コミ文をコピーする';
