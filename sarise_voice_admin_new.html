@@ -2394,9 +2394,10 @@ function renderOperationSariseVoice(store=currentStore()){
   const templateSel = document.getElementById('opVoiceTemplateSelect');
   if(templateSel){ templateSel.value = voice.lastSelectedTemplate || 'restaurant'; }
   if(updated) updated.textContent = voice.updatedAt ? formatDateTimeLabel(voice.updatedAt) : '-';
-  // 折りたたみ集計パネルを毎回閉じる
+  // 折りたたみ集計パネルを毎回閉じる + 期間フィルタを「今月」にリセット
   const aggPanel = document.getElementById('opVoiceAggregationPanel');
   if(aggPanel){ aggPanel.style.display = 'none'; aggPanel.innerHTML = ''; }
+  __sariseFilterState = { preset: 'thisMonth', customStart: '', customEnd: '' };
   const lastResp = document.getElementById('opVoiceLastResponseAt');
   if(lastResp) lastResp.textContent = '読み込み中...';
   renderSariseVoiceQr(voice.url || '');
@@ -2434,52 +2435,177 @@ async function refreshSariseStats(store=currentStore()){
 
 function escapeHtmlSarise(s){ return String(s ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-function renderSariseAggregation(stats){
+// 集計パネルの期間フィルタ状態（店舗切替・再表示でリセット）
+let __sariseFilterState = { preset: 'thisMonth', customStart: '', customEnd: '' };
+
+// プリセット → {startMs, endMs}
+function getSariseFilterRange(preset, customStart, customEnd){
+  const now = new Date();
+  const endNow = now.getTime();
+  if(preset === 'thisMonth'){
+    const s = new Date(now.getFullYear(), now.getMonth(), 1, 0,0,0,0);
+    return { startMs: s.getTime(), endMs: endNow };
+  }
+  if(preset === 'lastMonth'){
+    const s = new Date(now.getFullYear(), now.getMonth()-1, 1, 0,0,0,0);
+    const e = new Date(now.getFullYear(), now.getMonth(), 0, 23,59,59,999);
+    return { startMs: s.getTime(), endMs: e.getTime() };
+  }
+  if(preset === 'last3' || preset === 'last6'){
+    const s = new Date(now);
+    s.setMonth(s.getMonth() - (preset === 'last3' ? 3 : 6));
+    return { startMs: s.getTime(), endMs: endNow };
+  }
+  if(preset === 'custom'){
+    const sMs = customStart ? new Date(customStart + 'T00:00:00').getTime() : 0;
+    const eMs = customEnd   ? new Date(customEnd   + 'T23:59:59.999').getTime() : Number.MAX_SAFE_INTEGER;
+    return { startMs: sMs, endMs: eMs };
+  }
+  return { startMs: 0, endMs: Number.MAX_SAFE_INTEGER };
+}
+
+// raw 配列（createdAtMs 降順）から集計オブジェクトを再構築
+function computeSariseStatsFromRaw(raw){
+  const byQuestion = {};
+  for(const d of raw){
+    const ans = Array.isArray(d.answers) ? d.answers : [];
+    for(const a of ans){
+      const q = (a && a.question) || '(無題の質問)';
+      const v = (a && a.answer)   || '(未回答)';
+      if(!byQuestion[q]) byQuestion[q] = { total:0, counts:{} };
+      byQuestion[q].total += 1;
+      const parts = String(v).split(/[、,]/).map(s=>s.trim()).filter(Boolean);
+      const keys = parts.length ? parts : [String(v)];
+      for(const k of keys){
+        byQuestion[q].counts[k] = (byQuestion[q].counts[k] || 0) + 1;
+      }
+    }
+  }
+  return {
+    count: raw.length,
+    lastResponseAt: raw[0] ? raw[0].createdAtMs : 0,
+    recent: raw.slice(0,5),
+    byQuestion,
+    raw
+  };
+}
+
+// キャッシュからフィルタ → 再集計 → 再描画
+function rerenderSariseAggregation(){
+  const store = currentStore();
+  if(!store) return;
+  const full = __sariseStatsCache[store.id];
+  if(!full) return;
+  const { startMs, endMs } = getSariseFilterRange(
+    __sariseFilterState.preset,
+    __sariseFilterState.customStart,
+    __sariseFilterState.customEnd
+  );
+  const filteredRaw = (full.raw || []).filter(d => d.createdAtMs >= startMs && d.createdAtMs <= endMs);
+  renderSariseAggregation(computeSariseStatsFromRaw(filteredRaw), full);
+}
+
+function renderSariseAggregation(stats, fullStats){
   const panel = document.getElementById('opVoiceAggregationPanel');
   if(!panel) return;
-  if(!stats || stats.count === 0){
+  // 全件0件 → そもそも回答なし（フィルタUIも出さない）
+  if(!fullStats && (!stats || stats.count === 0)){
     panel.innerHTML = '<div class="muted">まだ回答がありません。</div>';
     panel.style.display = 'block';
     return;
   }
-  // 質問別棒グラフ
-  const qBlocks = Object.entries(stats.byQuestion).map(([qTitle, info])=>{
-    const total = info.total || 1;
-    const items = Object.entries(info.counts).sort((a,b)=>b[1]-a[1]);
-    const rows = items.map(([label, n])=>{
-      const pct = Math.round((n/total)*100);
-      return `<div style="display:grid;grid-template-columns:160px 1fr 60px;gap:8px;align-items:center;margin-bottom:4px">
-        <div style="font-size:12px;color:var(--txt-sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtmlSarise(label)}">${escapeHtmlSarise(label)}</div>
-        <div style="background:#e5e7eb;border-radius:6px;height:14px;overflow:hidden"><div style="background:var(--accent);width:${pct}%;height:100%"></div></div>
-        <div style="font-size:12px;color:var(--txt-sub);text-align:right">${n}件 (${pct}%)</div>
-      </div>`;
-    }).join('');
-    return `<div style="margin-bottom:14px">
-      <div style="font-weight:600;font-size:13px;margin-bottom:6px">${escapeHtmlSarise(qTitle)} <span class="muted" style="font-size:11px;font-weight:400">(${info.total}件の回答)</span></div>
-      ${rows}
-    </div>`;
-  }).join('');
-  // 直近5件プレビュー
-  const recent = stats.recent.map((r, i)=>{
-    const when = r.createdAtMs ? new Date(r.createdAtMs).toLocaleString('ja-JP') : '-';
-    const preview = (r.generatedReview || '').slice(0, 80);
-    return `<div style="border-top:1px solid var(--line);padding:8px 0">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:3px">#${i+1} ${escapeHtmlSarise(when)}</div>
-      <div style="font-size:12px;color:var(--txt)">${escapeHtmlSarise(preview)}${(r.generatedReview||'').length > 80 ? '…' : ''}</div>
-    </div>`;
-  }).join('');
-  panel.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <h3 style="margin:0">📊 回答集計（${stats.count}件）</h3>
-      <button class="btn" onclick="document.getElementById('opVoiceAggregationPanel').style.display='none'">閉じる</button>
-    </div>
-    <div style="margin-bottom:18px">${qBlocks || '<div class="muted">集計可能な選択式質問がありません。</div>'}</div>
-    <div>
-      <h3 style="margin:0 0 8px;font-size:13px">直近5件の回答プレビュー</h3>
-      ${recent || '<div class="muted">プレビューする回答がありません。</div>'}
+  if(fullStats && fullStats.count === 0){
+    panel.innerHTML = '<div class="muted">まだ回答がありません。</div>';
+    panel.style.display = 'block';
+    return;
+  }
+
+  // 期間フィルタ UI
+  const showCustom = __sariseFilterState.preset === 'custom';
+  const filterUi = `
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <select id="sariseFilterPresetSelect" style="width:auto;padding:6px 10px;font-size:13px">
+        <option value="thisMonth">今月</option>
+        <option value="lastMonth">先月</option>
+        <option value="last3">過去3ヶ月</option>
+        <option value="last6">過去6ヶ月</option>
+        <option value="all">全期間</option>
+        <option value="custom">カスタム範囲</option>
+      </select>
+      <input type="date" id="sariseFilterStart" style="width:auto;padding:6px 10px;font-size:13px;${showCustom?'':'display:none'}" value="${escapeHtmlSarise(__sariseFilterState.customStart)}">
+      <span id="sariseFilterDash" style="${showCustom?'':'display:none'};color:var(--muted);font-size:13px">〜</span>
+      <input type="date" id="sariseFilterEnd" style="width:auto;padding:6px 10px;font-size:13px;${showCustom?'':'display:none'}" value="${escapeHtmlSarise(__sariseFilterState.customEnd)}">
+      <button class="btn" id="sariseAggClose">閉じる</button>
     </div>
   `;
+  const header = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">
+      <h3 style="margin:0">📊 回答集計（${stats.count}件）</h3>
+      ${filterUi}
+    </div>
+  `;
+
+  if(stats.count === 0){
+    // 全件は0件ではないが、絞り込み後0件
+    panel.innerHTML = header + '<div class="muted" style="padding:14px 4px">該当する期間に回答がありません</div>';
+  } else {
+    // 質問別棒グラフ
+    const qBlocks = Object.entries(stats.byQuestion).map(([qTitle, info])=>{
+      const total = info.total || 1;
+      const items = Object.entries(info.counts).sort((a,b)=>b[1]-a[1]);
+      const rows = items.map(([label, n])=>{
+        const pct = Math.round((n/total)*100);
+        return `<div style="display:grid;grid-template-columns:160px 1fr 60px;gap:8px;align-items:center;margin-bottom:4px">
+          <div style="font-size:12px;color:var(--txt-sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtmlSarise(label)}">${escapeHtmlSarise(label)}</div>
+          <div style="background:#e5e7eb;border-radius:6px;height:14px;overflow:hidden"><div style="background:var(--accent);width:${pct}%;height:100%"></div></div>
+          <div style="font-size:12px;color:var(--txt-sub);text-align:right">${n}件 (${pct}%)</div>
+        </div>`;
+      }).join('');
+      return `<div style="margin-bottom:14px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:6px">${escapeHtmlSarise(qTitle)} <span class="muted" style="font-size:11px;font-weight:400">(${info.total}件の回答)</span></div>
+        ${rows}
+      </div>`;
+    }).join('');
+    // 直近5件プレビュー
+    const recent = stats.recent.map((r, i)=>{
+      const when = r.createdAtMs ? new Date(r.createdAtMs).toLocaleString('ja-JP') : '-';
+      const preview = (r.generatedReview || '').slice(0, 80);
+      return `<div style="border-top:1px solid var(--line);padding:8px 0">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:3px">#${i+1} ${escapeHtmlSarise(when)}</div>
+        <div style="font-size:12px;color:var(--txt)">${escapeHtmlSarise(preview)}${(r.generatedReview||'').length > 80 ? '…' : ''}</div>
+      </div>`;
+    }).join('');
+    panel.innerHTML = header + `
+      <div style="margin-bottom:18px">${qBlocks || '<div class="muted">集計可能な選択式質問がありません。</div>'}</div>
+      <div>
+        <h3 style="margin:0 0 8px;font-size:13px">直近5件の回答プレビュー</h3>
+        ${recent || '<div class="muted">プレビューする回答がありません。</div>'}
+      </div>
+    `;
+  }
   panel.style.display = 'block';
+
+  // フィルタUIのリスナーを attach
+  const sel = document.getElementById('sariseFilterPresetSelect');
+  const sIn = document.getElementById('sariseFilterStart');
+  const eIn = document.getElementById('sariseFilterEnd');
+  const closeBtn = document.getElementById('sariseAggClose');
+  if(sel) sel.value = __sariseFilterState.preset;
+  if(sel) sel.addEventListener('change', ()=>{
+    __sariseFilterState.preset = sel.value;
+    rerenderSariseAggregation();
+  });
+  if(sIn) sIn.addEventListener('change', ()=>{
+    __sariseFilterState.customStart = sIn.value;
+    rerenderSariseAggregation();
+  });
+  if(eIn) eIn.addEventListener('change', ()=>{
+    __sariseFilterState.customEnd = eIn.value;
+    rerenderSariseAggregation();
+  });
+  if(closeBtn) closeBtn.addEventListener('click', ()=>{
+    panel.style.display = 'none';
+  });
 }
 
 async function showSariseAggregation(){
@@ -2492,6 +2618,8 @@ async function showSariseAggregation(){
     panel.style.display = 'none';
     return;
   }
+  // 表示のたびにフィルタを「今月」へリセット
+  __sariseFilterState = { preset: 'thisMonth', customStart: '', customEnd: '' };
   panel.style.display = 'block';
   panel.innerHTML = '<div class="muted">集計を取得中...</div>';
   if(typeof window.fetchSariseStats !== 'function'){
@@ -2506,7 +2634,7 @@ async function showSariseAggregation(){
     if(countEl) countEl.value = stats.count;
     const lastResp = document.getElementById('opVoiceLastResponseAt');
     if(lastResp) lastResp.textContent = stats.lastResponseAt ? new Date(stats.lastResponseAt).toLocaleString('ja-JP') : '回答なし';
-    renderSariseAggregation(stats);
+    rerenderSariseAggregation();
   } catch(e){
     console.error(e);
     panel.innerHTML = '<div class="err">集計の取得に失敗しました: ' + escapeHtmlSarise(e.message || e) + '</div>';
